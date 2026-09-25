@@ -3,10 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra v6.0.0</title>
+<title>LibroObra v6.0.1</title>
 <!--
-  index_libroobra_v6_0_0.html — LibroObra v6.0.0 (25-sep-2026)
-  Backend: gas_libroobra_v6_0_0.gs (mismo número de versión).
+  index_libroobra_v6_0_1.html — LibroObra v6.0.1 (25-sep-2026)
+  Backend: gas_libroobra_v6_0_0.gs (SIN cambios — entrega solo frontend).
+
+  QUÉ CAMBIÓ EN v6.0.1 (respecto a v6.0.0) — primera prueba real en goecdg:
+   - API_URL nueva: la implementación anterior devolvía 404 SISTEMÁTICO en
+     el salto script.googleusercontent.com/…/echo (incluso en ?action=ping
+     desde la PWA), aunque el backend ejecutaba bien (Log_GAS: "PIN generado
+     y enviado", "login correcto"). Misma familia que el 404 de PreKOM; se
+     resolvió igual: Implementar → Nueva implementación (URL nueva).
+   - validarPIN: si falla el transporte (404, red, respuesta no JSON) NO se
+     muestra "sin conexión" — el PIN es de un solo uso y el backend pudo
+     haberlo consumido. Vuelve al paso del email con "No pudimos confirmar
+     el ingreso, pedí un código nuevo" (opción A acordada).
+   - solicitarPIN: si falla el transporte, el mail pudo haber salido igual →
+     pasa al paso del código con un aviso ("si te llegó el mail, ingresalo;
+     si no, pedí otro en 2 minutos") en vez de "sin conexión".
+   - llamarBackend: si la respuesta no es JSON o es HTTP de error, la
+     consola muestra los primeros 300 caracteres de lo que llegó
+     (diagnóstico directo). El PIN nunca se escribe en la consola.
   Diseño: LibroObra_Diseno_v6_1.md.
 
   QUÉ ES v6.0.0 — reescritura de V5.1.2 sobre el patrón PreKOM/BDC:
@@ -592,7 +609,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   <div class="caja">
     <span class="caja-emoji">📋</span>
     <div class="caja-logo">LibroObra</div>
-    <div class="caja-version" id="version-login">v6.0.0</div>
+    <div class="caja-version" id="version-login">v6.0.1</div>
     <div class="caja-sub">Registro de comunicaciones de obra</div>
 
     <div id="paso-email" class="login-paso activo">
@@ -656,7 +673,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <button class="hdr-btn" id="btn-cambiar-obra" onclick="cambiarObra()">Cambiar obra</button>
     <button class="hdr-btn hdr-btn-instalar hidden" id="btn-instalar">Instalar</button>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version" id="version-app">v6.0.0</span>
+    <span class="hdr-version" id="version-app">v6.0.1</span>
     <button class="hdr-btn" onclick="confirmarCerrarSesion()">Salir</button>
   </header>
 
@@ -1007,8 +1024,8 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 // ══════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════
-const APP_VERSION = 'v6.0.0';
-const API_URL = 'https://script.google.com/macros/s/AKfycbz9VC_ihgLpR_v7uthMQU5xLWywqng6Y1jC0CsaA4H3s9WAOTiMiMMZ1mN8QZX2_eld/exec';
+const APP_VERSION = 'v6.0.1';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxDN2F_K6z4wQXDJAyyZ6EdoSqoQgHv8d8f7gXGo-QYdke3DXW6hvZtEnmEy9xFpjTO/exec';
 const SESION_KEY = 'lo_sesion';
 const OBRA_KEY = 'lo_obra_actual';
 const DASH_KEY_PREFIJO = 'lo_dash_';
@@ -1257,16 +1274,23 @@ async function llamarBackend(action, params, reintentando) {
   } catch (fetchErr) {
     return llamarBackendManejarFallo_(action, params, reintentando, new Error('No se pudo conectar con el backend. Revisá tu conexión y volvé a intentar.'));
   }
-  if (!resp.ok) return llamarBackendManejarFallo_(action, params, reintentando, new Error('El backend respondió con un error (HTTP ' + resp.status + ').'));
+  let texto = '';
+  try { texto = await resp.text(); } catch (e) { texto = ''; }
+  if (!resp.ok) {
+    console.error('[llamarBackend]', action, 'HTTP ' + resp.status + ' — ' + (resp.url || '') + ' — respuesta (300 car.):', texto.slice(0, 300));
+    return llamarBackendManejarFallo_(action, params, reintentando, new Error('El backend respondió con un error (HTTP ' + resp.status + ').'));
+  }
   try {
-    return await resp.json();
+    return JSON.parse(texto);
   } catch (parseErr) {
+    console.error('[llamarBackend]', action, 'respuesta NO JSON (300 car.):', texto.slice(0, 300));
     return llamarBackendManejarFallo_(action, params, reintentando, new Error('El backend devolvió una respuesta inválida.'));
   }
 }
 async function llamarBackendManejarFallo_(action, params, reintentando, errorClasificado) {
   const paramsLog = Object.assign({}, params || {});
   if (paramsLog.archivo) paramsLog.archivo = { nombre: paramsLog.archivo.nombre, bytesBase64: (paramsLog.archivo.base64 || '').length };
+  if (paramsLog.pin) paramsLog.pin = '******'; // v6.0.1 — el PIN nunca a la consola
   console.error('[llamarBackend]', action, paramsLog, '—', errorClasificado.message);
   if (!reintentando && ACCIONES_SEGURAS_REINTENTO.has(action)) {
     await new Promise(function (r) { setTimeout(r, 700); });
@@ -1401,19 +1425,26 @@ document.getElementById('btn-pedir-pin').addEventListener('click', async functio
       this.disabled = false;
       return;
     }
-    document.getElementById('email-confirmado').textContent = email;
-    document.getElementById('input-email').dataset.pendiente = email;
-    document.getElementById('input-pin').value = '';
-    mostrarPasoLogin('codigo');
-    setTimeout(function () { document.getElementById('input-pin').focus(); }, 50);
+    irAPasoCodigo(email, '');
   } catch (err) {
-    mostrarPasoLogin('sin-conexion');
+    // v6.0.1 — falla de transporte: el backend pudo haber mandado el mail igual
+    irAPasoCodigo(email, 'No pudimos confirmar el envío. Si te llegó el mail, ingresá el código; si no, pedí otro en 2 minutos.');
   }
   this.disabled = false;
 });
 document.getElementById('input-email').addEventListener('keydown', function (e) { if (e.key === 'Enter') document.getElementById('btn-pedir-pin').click(); });
 document.getElementById('input-pin').addEventListener('keydown', function (e) { if (e.key === 'Enter') document.getElementById('btn-validar-pin').click(); });
 
+function irAPasoCodigo(email, aviso) {
+  document.getElementById('email-confirmado').textContent = email;
+  document.getElementById('input-email').dataset.pendiente = email;
+  document.getElementById('input-pin').value = '';
+  const errBox = document.getElementById('login-error-pin');
+  errBox.textContent = aviso || '';
+  errBox.classList.toggle('visible', !!aviso);
+  mostrarPasoLogin('codigo');
+  setTimeout(function () { document.getElementById('input-pin').focus(); }, 50);
+}
 function textoErrorSolicitarPin(motivo, restanteSegundos) {
   if (motivo === 'cooldown') return 'Esperá ' + restanteSegundos + ' segundos antes de pedir otro código.';
   if (motivo === 'no_encontrado') return 'Ese email no está habilitado para LibroObra.';
@@ -1442,10 +1473,18 @@ document.getElementById('btn-validar-pin').addEventListener('click', async funct
     }
     guardarSesion(email, res.nombreApellido, res.noExpira);
     mostrarPasoLogin('validando');
-    await iniciarSesion(email);
   } catch (err) {
-    mostrarPasoLogin('sin-conexion');
+    // v6.0.1 — opción A: el PIN es de un solo uso y el backend pudo haberlo
+    // consumido aunque la respuesta se haya perdido → no reintentar, pedir otro.
+    this.disabled = false;
+    const errEmail = document.getElementById('login-error-email');
+    document.getElementById('input-email').value = email || '';
+    errEmail.textContent = 'No pudimos confirmar el ingreso (falla de comunicación con el servidor). Pedí un código nuevo.';
+    errEmail.classList.add('visible');
+    mostrarPasoLogin('email');
+    return;
   }
+  await iniciarSesion(email);
   this.disabled = false;
 });
 function textoErrorValidarPin(motivo, restantes) {
