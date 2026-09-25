@@ -1,0 +1,17 @@
+{
+  "name": "LibroObra — Registro de comunicaciones de obra",
+  "short_name": "LibroObra",
+  "description": "Registro de comunicaciones de obra (OS, NP, RM…), hitos y dashboard por obra.",
+  "start_url": "/lo/",
+  "scope": "/lo/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f1f5f9",
+  "theme_color": "#0f172a",
+  "lang": "es-AR",
+  "icons": [
+    { "src": "icons/lo_icon_192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/lo_icon_512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/lo_icon_maskable_512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
