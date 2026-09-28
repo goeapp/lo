@@ -3,10 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra v6.0.1</title>
+<title>LibroObra v6.0.2</title>
 <!--
-  index_libroobra_v6_0_1.html — LibroObra v6.0.1 (25-sep-2026)
-  Backend: gas_libroobra_v6_0_0.gs (SIN cambios — entrega solo frontend).
+  index_libroobra_v6_0_2.html — LibroObra v6.0.2 (28-sep-2026)
+  Backend: gas_libroobra_v6_0_0.gs (SIN cambios — entrega solo frontend, misma API_URL).
+
+  QUÉ CAMBIÓ EN v6.0.2 (respecto a v6.0.1):
+   - Carga en segundo plano: si hay copia local del dashboard, NO hay velo.
+     El dashboard queda usable y un panel de tareas (abajo a la derecha)
+     muestra "Verificando permisos…" / "Cargando comunicaciones e hitos…"
+     y se va solo al terminar. Sin copia local: velo como antes.
+     ↻ Actualizar también va por el panel, sin velo.
+   - Errores: falla de red/404 → panel rojo + Reintentar, el dashboard
+     sigue visible. Rechazo del backend (sin permiso, usuario inactivo,
+     etc.) → se oculta el dashboard y vuelve el velo con el error.
+   - Leyenda del dashboard: "(copia local)" hasta que llegan los datos
+     frescos. Si falla el recálculo en segundo plano y no hay dashboard:
+     "Sin calcular — tocá Recalcular" (antes quedaba "Calculando…").
+   - El recálculo en segundo plano también se ve en el panel de tareas.
+   - Historial (clic en Estado): sin ediciones (FechaHoraModif vacío) →
+     respuesta instantánea, sin backend. Con ediciones → el modal abre al
+     instante con el estado actual y completa los cambios anteriores al
+     llegar. Caché por comunicación (clave Id + FechaHoraModif). El reloj
+     del badge solo aparece si la comunicación tiene ediciones.
 
   QUÉ CAMBIÓ EN v6.0.1 (respecto a v6.0.0) — primera prueba real en goecdg:
    - API_URL nueva: la implementación anterior devolvía 404 SISTEMÁTICO en
@@ -593,7 +612,36 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 .btn-cerrar-sesion { width: 100%; margin-top: 16px; padding: 9px; border-radius: var(--radius-sm); border: 1px solid #fecaca; background: #fef2f2; color: #991b1b; font-size: .78rem; font-weight: 600; }
 .btn-cerrar-sesion:hover { background: #fee2e2; }
 
+/* ══════════════════════════════════════════════
+   PANEL DE TAREAS (v6.0.2) — cargas y recálculos en segundo plano
+══════════════════════════════════════════════ */
+#tareas-panel {
+  position: fixed; right: 16px; bottom: 16px; z-index: 700;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow-md); padding: 8px 10px; min-width: 260px; max-width: 340px;
+  display: none; flex-direction: column; gap: 2px; animation: fadeUp .2s ease;
+}
+#tareas-panel.visible { display: flex; }
+.tarea { display: flex; align-items: flex-start; gap: 8px; padding: 5px 2px; font-size: .78rem; color: var(--text); }
+.tarea-ico { width: 14px; height: 14px; flex-shrink: 0; margin-top: 2px; display: inline-flex; align-items: center; justify-content: center; font-size: .78rem; font-weight: 700; line-height: 1; }
+.tarea-ico.giro { border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: girar .8s linear infinite; }
+.tarea.ok .tarea-ico { color: var(--success); }
+.tarea.ok .tarea-txt { color: var(--muted); }
+.tarea.error { color: #991b1b; }
+.tarea.error .tarea-ico { color: var(--danger); }
+.tarea-cuerpo { flex: 1; min-width: 0; }
+.tarea-acciones { display: flex; gap: 6px; margin-top: 6px; }
+.tarea-acciones button { font-size: .72rem; font-weight: 600; padding: 3px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.tarea-acciones button.primario { background: var(--accent); border-color: var(--accent-border); color: #fff; }
+.tarea-cerrar { background: none; border: none; color: var(--muted); font-size: .95rem; line-height: 1; padding: 0 2px; }
+
+/* Historial: cambios anteriores cargando (v6.0.2) */
+.tl-cargando { display: flex; align-items: center; gap: 8px; font-size: .75rem; color: var(--muted); padding: 2px 0 14px 6px; }
+.tl-cargando .btn-mini-spin { flex-shrink: 0; }
+.tl-nota { font-size: .72rem; color: var(--muted); font-style: italic; padding: 0 0 12px 6px; }
+
 @media (max-width: 640px) {
+  #tareas-panel { left: 12px; right: 12px; bottom: 76px; max-width: none; min-width: 0; }
   #main-content { padding: 14px 12px 60px; }
   #app-header { padding: 8px 12px; }
   .hdr-name, .hdr-version { display: none; }
@@ -609,7 +657,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   <div class="caja">
     <span class="caja-emoji">📋</span>
     <div class="caja-logo">LibroObra</div>
-    <div class="caja-version" id="version-login">v6.0.1</div>
+    <div class="caja-version" id="version-login">v6.0.2</div>
     <div class="caja-sub">Registro de comunicaciones de obra</div>
 
     <div id="paso-email" class="login-paso activo">
@@ -673,7 +721,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <button class="hdr-btn" id="btn-cambiar-obra" onclick="cambiarObra()">Cambiar obra</button>
     <button class="hdr-btn hdr-btn-instalar hidden" id="btn-instalar">Instalar</button>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version" id="version-app">v6.0.1</span>
+    <span class="hdr-version" id="version-app">v6.0.2</span>
     <button class="hdr-btn" onclick="confirmarCerrarSesion()">Salir</button>
   </header>
 
@@ -765,7 +813,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
         <div class="sec-title"><div class="sec-title-dot"></div>Comunicaciones</div>
         <div class="sec-actions">
           <button id="btn-nueva-com" class="btn btn-primary btn-sm hidden" onclick="abrirModalCarga()">+ Nueva</button>
-          <button class="btn btn-secondary btn-sm" onclick="recargarDatosObra()">↻ Actualizar</button>
+          <button class="btn btn-secondary btn-sm btn-actualizar" onclick="recargarDatosObra()">↻ Actualizar</button>
           <button class="btn btn-secondary btn-sm" onclick="exportarExcel()">↓ Excel</button>
         </div>
       </div>
@@ -788,7 +836,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
         <div class="sec-title"><div class="sec-title-dot"></div>Hitos</div>
         <div class="sec-actions">
           <button id="btn-nuevo-hito" class="btn btn-primary btn-sm hidden" onclick="abrirModalHito(null)">+ Nuevo hito</button>
-          <button class="btn btn-secondary btn-sm" onclick="recargarDatosObra()">↻ Actualizar</button>
+          <button class="btn btn-secondary btn-sm btn-actualizar" onclick="recargarDatosObra()">↻ Actualizar</button>
           <button class="btn btn-secondary btn-sm" onclick="exportarHitosPDF()">↓ PDF</button>
         </div>
       </div>
@@ -1015,6 +1063,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 
 <div id="spinner"><div class="spinner-ring"></div><div id="spinner-msg"></div></div>
 <div id="toast" class="toast"></div>
+<div id="tareas-panel" role="status" aria-live="polite"></div>
 <div id="hm-tooltip" class="tooltip-flotante"></div>
 <div id="hi-tl-tooltip" class="hi-tl-tooltip"></div>
 
@@ -1024,7 +1073,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 // ══════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════
-const APP_VERSION = 'v6.0.1';
+const APP_VERSION = 'v6.0.2';
 const API_URL = 'https://script.google.com/macros/s/AKfycbxDN2F_K6z4wQXDJAyyZ6EdoSqoQgHv8d8f7gXGo-QYdke3DXW6hvZtEnmEy9xFpjTO/exec';
 const SESION_KEY = 'lo_sesion';
 const OBRA_KEY = 'lo_obra_actual';
@@ -1074,7 +1123,12 @@ const estado = {
   file: null, altaId: null,           // altaId: se mantiene mientras el modal de alta sigue abierto (reintento manual = mismo Id)
   editId: null,
   hitoEditId: null, hitoAltaId: null,
-  cargaSeq: 0                         // descarta respuestas de una obra anterior si se cambió de obra a mitad de carga
+  cargaSeq: 0,                        // descarta respuestas de una obra anterior si se cambió de obra a mitad de carga
+  cargando: false,                    // v6.0.2 — hay una carga liviana→pesada en curso
+  dashEsCopiaLocal: false,            // v6.0.2 — el dashboard en pantalla viene de lo_dash_{obraId}, todavía sin confirmar
+  dashFalloRecalc: false,             // v6.0.2 — falló el recálculo en segundo plano (leyenda "Sin calcular")
+  histCache: {},                      // v6.0.2 — historial por 'id|fechaHoraModif' (se invalida solo al editar)
+  histToken: 0                        // v6.0.2 — descarta respuestas de un historial que ya no está abierto
 };
 
 // ══════════════════════════════════════════════
@@ -1221,6 +1275,67 @@ function mostrarToast(mensaje) {
 function spinner(on, msg) {
   document.getElementById('spinner-msg').textContent = on ? (msg || '') : '';
   document.getElementById('spinner').classList.toggle('on', !!on);
+}
+
+// ══════════════════════════════════════════════
+// PANEL DE TAREAS (v6.0.2) — lo que corre en segundo plano
+// ══════════════════════════════════════════════
+// Cada tarea tiene una clave ('permisos', 'datos', 'dash'). Estados:
+// 'curso' (girando) → 'ok' (✓) o 'error' (rojo, con acciones). Cuando no
+// queda ninguna en curso ni con error, el panel muestra los ✓ 1,5 s y se va.
+const _tareas = {};          // clave → { estado, texto, acciones:[{texto, fn, primario}] }
+const _tareasOrden = [];
+let _tareasTimer = null;
+
+function tareaSet_(clave, estadoT, texto, acciones) {
+  if (!_tareas[clave]) _tareasOrden.push(clave);
+  _tareas[clave] = { estado: estadoT, texto: texto, acciones: acciones || [] };
+  renderTareas_();
+}
+function tareaIniciar(clave, texto) { tareaSet_(clave, 'curso', texto); }
+function tareaOk(clave, texto) { tareaSet_(clave, 'ok', texto); }
+function tareaError(clave, texto, acciones) { tareaSet_(clave, 'error', texto, acciones); }
+function tareaQuitar(clave) {
+  if (!_tareas[clave]) return;
+  delete _tareas[clave];
+  _tareasOrden.splice(_tareasOrden.indexOf(clave), 1);
+  renderTareas_();
+}
+function tareasLimpiar() { _tareasOrden.slice().forEach(function (k) { delete _tareas[k]; }); _tareasOrden.length = 0; renderTareas_(); }
+
+function renderTareas_() {
+  const panel = document.getElementById('tareas-panel');
+  if (_tareasTimer) { clearTimeout(_tareasTimer); _tareasTimer = null; }
+  if (!_tareasOrden.length) { panel.classList.remove('visible'); panel.innerHTML = ''; return; }
+  panel.innerHTML = '';
+  _tareasOrden.forEach(function (clave) {
+    const t = _tareas[clave];
+    const fila = document.createElement('div');
+    fila.className = 'tarea ' + t.estado;
+    fila.dataset.clave = clave;
+    const ico = t.estado === 'curso' ? '<span class="tarea-ico giro"></span>'
+      : t.estado === 'ok' ? '<span class="tarea-ico">✓</span>' : '<span class="tarea-ico">!</span>';
+    fila.innerHTML = ico + '<div class="tarea-cuerpo"><div class="tarea-txt">' + escaparHtml(t.texto) + '</div></div>' +
+      (t.estado === 'error' ? '<button class="tarea-cerrar" title="Cerrar">×</button>' : '');
+    if (t.acciones.length) {
+      const acc = document.createElement('div');
+      acc.className = 'tarea-acciones';
+      t.acciones.forEach(function (a) {
+        const b = document.createElement('button');
+        b.textContent = a.texto;
+        if (a.primario) b.className = 'primario';
+        b.onclick = a.fn;
+        acc.appendChild(b);
+      });
+      fila.querySelector('.tarea-cuerpo').appendChild(acc);
+    }
+    const x = fila.querySelector('.tarea-cerrar');
+    if (x) x.onclick = function () { tareaQuitar(clave); };
+    panel.appendChild(fila);
+  });
+  panel.classList.add('visible');
+  const pendientes = _tareasOrden.some(function (k) { return _tareas[k].estado !== 'ok'; });
+  if (!pendientes) _tareasTimer = setTimeout(tareasLimpiar, 1500);
 }
 
 function abrirModal(id) { document.getElementById(id).classList.add('open'); }
@@ -1567,6 +1682,9 @@ async function cambiarObra() {
   lsDel(OBRA_KEY);
   estado.obra = null;
   estado.cargaSeq++;
+  estado.cargando = false;
+  tareasLimpiar();
+  ocultarLoader();
   mostrarPantalla('obras-screen');
   document.getElementById('lista-obras').innerHTML = '<div class="obras-vacio">Cargando obras…</div>';
   try {
@@ -1595,6 +1713,10 @@ function resetDatosObra() {
   estado.dashboard = null; estado.datosListos = false;
   estado.filtroTipo = 'todos'; estado.filtroHashtag = '';
   estado.puedeEditar = false; estado.perfil = '';
+  estado.dashEsCopiaLocal = false; estado.dashFalloRecalc = false;
+  estado.histCache = {};
+  document.getElementById('btn-nueva-com').classList.add('hidden');
+  document.getElementById('btn-nuevo-hito').classList.add('hidden');
 }
 
 async function mostrarApp() {
@@ -1605,8 +1727,10 @@ async function mostrarApp() {
   habilitarNav(false);
 
   // Dashboard al instante desde la copia local (si hay) — diseño §6
+  // v6.0.2: con copia local la carga va en segundo plano (panel de tareas, sin velo)
   const dashLocal = leerDashLocal(estado.obra.obraId);
-  if (dashLocal) { estado.dashboard = dashLocal; }
+  if (dashLocal) { estado.dashboard = dashLocal; estado.dashEsCopiaLocal = true; }
+  estado.seccion = 'inicio';
   showSection('inicio', true);
   await cargarDatosObra(false);
 }
@@ -1620,7 +1744,19 @@ function pintarHeaderObra() {
 }
 
 function habilitarNav(on) {
-  ['nav-inicio', 'nav-comunicaciones', 'nav-hitos'].forEach(function (id) { document.getElementById(id).disabled = !on; });
+  ['nav-inicio', 'nav-comunicaciones', 'nav-hitos'].forEach(function (id) {
+    const b = document.getElementById(id);
+    b.disabled = !on;
+    b.title = on ? '' : 'Cargando datos…';
+  });
+}
+/** v6.0.2 — mientras corre una carga: sin Cambiar obra, Recalcular ni ↻ Actualizar (evita cargas cruzadas). */
+function bloquearDuranteCarga(on) {
+  estado.cargando = on;
+  document.getElementById('btn-cambiar-obra').disabled = on;
+  const rec = document.getElementById('btn-recalcular');
+  if (!rec.dataset.enCurso) rec.disabled = on;
+  document.querySelectorAll('.btn-actualizar').forEach(function (b) { b.disabled = on; });
 }
 
 function mostrarLoader(html) {
@@ -1634,11 +1770,18 @@ function ocultarLoader() { document.getElementById('main-loader').classList.remo
  * ↻ Actualizar — misma secuencia, sin perder la sección actual.
  */
 async function cargarDatosObra(recarga) {
+  if (!estado.obra) return;
   const seq = ++estado.cargaSeq;
   const obraId = estado.obra.obraId;
-  document.getElementById('btn-cambiar-obra').disabled = true;
+  // v6.0.2 — en segundo plano si ya hay algo útil en pantalla: el dashboard
+  // local (apertura / F5) o los datos cargados (↻ Actualizar). Si no, velo.
+  const enFondo = !!(recarga && estado.datosListos) || !!estado.dashboard;
+  let etapa = 'permisos';
+  bloquearDuranteCarga(true);
+  tareaQuitar('permisos'); tareaQuitar('datos');
   try {
-    mostrarLoader('<div class="spinner"></div>Verificando permisos…');
+    if (enFondo) { ocultarLoader(); tareaIniciar('permisos', 'Verificando permisos…'); }
+    else mostrarLoader('<div class="spinner"></div>Verificando permisos…');
     const liv = await api('inicializarObraLiviana', {});
     if (seq !== estado.cargaSeq) return;
     estado.obra = liv.obra;
@@ -1647,7 +1790,9 @@ async function cargarDatosObra(recarga) {
     estado.perfil = liv.permisos.perfil;
     pintarHeaderObra();
 
-    mostrarLoader('<div class="spinner"></div>Cargando comunicaciones y hitos…');
+    etapa = 'datos';
+    if (enFondo) { tareaOk('permisos', 'Permisos verificados'); tareaIniciar('datos', 'Cargando comunicaciones e hitos…'); }
+    else mostrarLoader('<div class="spinner"></div>Cargando comunicaciones y hitos…');
     const pes = await api('inicializarObraPesada', {});
     if (seq !== estado.cargaSeq || !estado.obra || estado.obra.obraId !== obraId) return;
     estado.comunicaciones = pes.comunicaciones || [];
@@ -1655,7 +1800,11 @@ async function cargarDatosObra(recarga) {
     estado.hitos = pes.hitos || [];
     estado.tipos = pes.tipos || [];
     estado.etiquetas = pes.etiquetas || [];
-    if (pes.dashboard) { estado.dashboard = pes.dashboard; guardarDashLocal(obraId, pes.dashboard); }
+    if (pes.dashboard) {
+      estado.dashboard = pes.dashboard;
+      estado.dashEsCopiaLocal = false;
+      guardarDashLocal(obraId, pes.dashboard);
+    }
     estado.datosListos = true;
 
     document.getElementById('btn-nueva-com').classList.toggle('hidden', !estado.puedeEditar);
@@ -1665,21 +1814,45 @@ async function cargarDatosObra(recarga) {
     if (estado.dtCom) { estado.dtCom.destroy(); estado.dtCom = null; }
     if (estado.dtHitos) { estado.dtHitos.destroy(); estado.dtHitos = null; }
     showSection(estado.seccion, true);
-    if (recarga) mostrarToast('✓ Datos actualizados');
+    if (enFondo) tareaOk('datos', recarga ? 'Datos actualizados' : 'Datos cargados');
+    else if (recarga) mostrarToast('✓ Datos actualizados');
 
     // Obra sin dashboard calculado todavía (recién creada): se calcula una vez en segundo plano
     if (!pes.dashboard) recalcularDashboardFondo('accion');
   } catch (err) {
     if (seq !== estado.cargaSeq) return;
     console.error('[cargarDatosObra]', err);
-    mostrarLoader('<div style="max-width:420px">' + escaparHtml(err.message || 'No se pudo conectar con el backend.') + '</div>' +
-      '<button class="btn-accion" onclick="cargarDatosObra(' + (recarga ? 'true' : 'false') + ')">Reintentar</button>' +
-      '<button class="btn-secundario" onclick="cambiarObra()">Cambiar obra</button>');
+    const msg = err.message || 'No se pudo conectar con el backend.';
+    const reintentar = function () { cargarDatosObra(recarga); };
+    // err.respuesta = el backend respondió {ok:false} (sin permiso, usuario inactivo, obra inexistente…).
+    // Sin respuesta = falla de transporte (red, 404, respuesta no JSON).
+    const rechazoBackend = !!err.respuesta;
+    if (enFondo && !rechazoBackend) {
+      // Falla de red: lo que está en pantalla sigue siendo válido → panel rojo, sin tapar nada
+      tareaQuitar(etapa === 'permisos' ? 'datos' : 'permisos');
+      tareaError(etapa, 'No se pudieron cargar los datos. ' + msg, [{ texto: 'Reintentar', fn: reintentar, primario: true }]);
+    } else {
+      // Rechazo del backend (o nada útil en pantalla): se oculta el dashboard y vuelve el velo
+      tareaQuitar('permisos'); tareaQuitar('datos');
+      if (rechazoBackend) {
+        resetDatosObra();
+        document.getElementById('tbody-com').innerHTML = '';
+        document.getElementById('tbody-hitos').innerHTML = '';
+        habilitarNav(false);
+        pintarHeaderObra();
+        showSection('inicio', true);
+      }
+      mostrarLoader('<div style="max-width:420px">' + escaparHtml(msg) + '</div>' +
+        '<button class="btn-accion" id="btn-loader-reintentar">Reintentar</button>' +
+        '<button class="btn-secundario" onclick="cambiarObra()">Cambiar obra</button>');
+      // tras un rechazo el dashboard ya se limpió → el reintento va con velo (no reaparece la copia local)
+      document.getElementById('btn-loader-reintentar').onclick = reintentar;
+    }
   } finally {
-    if (seq === estado.cargaSeq) document.getElementById('btn-cambiar-obra').disabled = false;
+    if (seq === estado.cargaSeq) bloquearDuranteCarga(false);
   }
 }
-function recargarDatosObra() { cargarDatosObra(true); }
+function recargarDatosObra() { if (!estado.cargando) cargarDatosObra(true); }
 
 // ══════════════════════════════════════════════
 // NAVEGACIÓN (todo en memoria — no pide nada al backend)
@@ -1706,14 +1879,24 @@ function renderDashboard() {
   const d = estado.dashboard;
   const leyenda = document.getElementById('dash-leyenda');
   if (!d) {
-    leyenda.textContent = estado.datosListos ? 'Calculando dashboard…' : 'Sin datos calculados todavía';
+    // v6.0.2 — si falló el recálculo en segundo plano, no queda "Calculando…" colgado
+    leyenda.textContent = !estado.datosListos ? 'Sin datos calculados todavía'
+      : estado.dashFalloRecalc ? 'Sin calcular — tocá Recalcular' : 'Calculando dashboard…';
     document.getElementById('dash-cards').innerHTML = '';
     document.getElementById('tbody-ultimos').innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px">—</td></tr>';
     document.getElementById('tbody-avisos').innerHTML = '';
+    document.getElementById('ul-avisos-badge').classList.add('hidden');
     document.getElementById('dash-hashtags').innerHTML = '';
+    // v6.0.2 — también se limpian heatmap, treemap y gráfico (caso: permiso rechazado con copia local en pantalla)
+    document.getElementById('heatmap').innerHTML = '';
+    document.getElementById('hm-modes').innerHTML = '';
+    document.getElementById('tm-filtros').innerHTML = '';
+    document.getElementById('treemap-wrap').innerHTML = '<div class="treemap-empty">Sin datos</div>';
+    if (_chartInst) { _chartInst.destroy(); _chartInst = null; }
     return;
   }
-  leyenda.textContent = 'Actualizado ' + fmtFechaHora(d.calculadoEn) + ' · ' + (ORIGEN_TXT[d.origen] || d.origen || '');
+  leyenda.textContent = 'Actualizado ' + fmtFechaHora(d.calculadoEn) + ' · ' + (ORIGEN_TXT[d.origen] || d.origen || '') +
+    (estado.dashEsCopiaLocal ? ' (copia local)' : '');
   renderCardsDashboard(d);
   renderUltimos5(d.ultimos5 || []);
   renderAvisos(d.avisos || []);
@@ -1817,33 +2000,49 @@ document.getElementById('dash-hashtags').addEventListener('click', function (e) 
 // ── Recalcular ──
 async function recalcularDashboardManual() {
   if (!estado.obra) return;
+  if (estado.cargando) return;
+  const obraId = estado.obra.obraId;
   const btn = document.getElementById('btn-recalcular');
   btn.disabled = true;
+  btn.dataset.enCurso = '1';
   btn.innerHTML = '<span class="btn-mini-spin"></span> Recalculando…';
+  tareaQuitar('dash');
   try {
     const r = await api('recalcularDashboard', { origen: 'manual' });
+    if (!estado.obra || estado.obra.obraId !== obraId) return;
     estado.dashboard = r.dashboard;
-    guardarDashLocal(estado.obra.obraId, r.dashboard);
+    estado.dashEsCopiaLocal = false;
+    estado.dashFalloRecalc = false;
+    guardarDashLocal(obraId, r.dashboard);
     if (estado.seccion === 'inicio') renderDashboard();
     mostrarToast('✓ Dashboard recalculado');
   } catch (err) {
     mostrarAviso('No se pudo recalcular el dashboard: ' + err.message);
   } finally {
-    btn.disabled = false;
+    delete btn.dataset.enCurso;
+    btn.disabled = estado.cargando;
     btn.textContent = '↻ Recalcular';
   }
 }
-/** Tras un guardado: en segundo plano, sin que el usuario espere (diseño §6.2). */
+/** Tras un guardado: en segundo plano, sin que el usuario espere (diseño §6.2). v6.0.2: visible en el panel de tareas. */
 function recalcularDashboardFondo(origen) {
   if (!estado.obra) return;
   const obraId = estado.obra.obraId;
+  estado.dashFalloRecalc = false;
+  tareaIniciar('dash', 'Recalculando dashboard…');
   api('recalcularDashboard', { origen: origen || 'accion' }).then(function (r) {
-    if (!estado.obra || estado.obra.obraId !== obraId) return;
+    if (!estado.obra || estado.obra.obraId !== obraId) { tareaQuitar('dash'); return; }
     estado.dashboard = r.dashboard;
+    estado.dashEsCopiaLocal = false;
     guardarDashLocal(obraId, r.dashboard);
     if (estado.seccion === 'inicio') renderDashboard();
+    tareaOk('dash', 'Dashboard actualizado');
   }).catch(function (err) {
     console.error('[recalcularDashboardFondo]', err); // no bloquea: queda el botón y el activador de las 23 hs
+    if (!estado.obra || estado.obra.obraId !== obraId) { tareaQuitar('dash'); return; }
+    estado.dashFalloRecalc = true;
+    if (estado.seccion === 'inicio') renderDashboard();
+    tareaError('dash', 'No se pudo recalcular el dashboard.', [{ texto: 'Reintentar', fn: function () { recalcularDashboardFondo(origen); }, primario: true }]);
   });
 }
 
@@ -2133,7 +2332,10 @@ function filaComunicacion(c) {
     '<td class="celda-asunto" title="' + escaparHtml(c.resumen) + '">' + escaparHtml(c.asunto) + '</td>' +
     '<td>' + etiq + '</td>' +
     '<td>' + hash + '</td>' +
-    '<td><span class="badge badge-' + claveEstado(c.estado) + ' badge-with-hist" data-accion="historial" title="Ver historial">' + escaparHtml(c.estado || 'Activo') + ' ' + ICO.history + '</span></td>' +
+    // v6.0.2 — el reloj solo si hubo ediciones (FechaHoraModif ⇔ hay fotos en Historia)
+    '<td><span class="badge badge-' + claveEstado(c.estado) + ' badge-with-hist" data-accion="historial" title="' +
+      (c.fechaHoraModif ? 'Ver historial de ediciones' : 'Sin ediciones — ver alta') + '">' + escaparHtml(c.estado || 'Activo') +
+      (c.fechaHoraModif ? ' ' + ICO.history : '') + '</span></td>' +
     '<td style="text-align:center">' + adj + '</td>' +
     '<td>' + accion + '</td></tr>';
 }
@@ -2162,6 +2364,7 @@ function aplicarFiltrosTabla() {
 function filtrarTipo(tipo) { estado.filtroTipo = tipo; renderFiltrosTipo(); aplicarFiltrosTabla(); }
 function filtrarHashtag(tag) { estado.filtroHashtag = tag; renderFiltrosTipo(); aplicarFiltrosTabla(); }
 function irAHashtag(tag) {
+  if (!estado.datosListos) { mostrarToast('Cargando datos… probá en un momento'); return; }  // v6.0.2 — dashboard usable durante la carga
   estado.filtroHashtag = tag;
   if (estado.seccion !== 'comunicaciones') showSection('comunicaciones');
   else { renderFiltrosTipo(); aplicarFiltrosTabla(); }
@@ -2443,37 +2646,82 @@ async function guardarEdicion() {
 }
 
 // ── Historial (línea de tiempo de V5) ──
+/**
+ * v6.0.2 — Regla del backend (LO_editarComunicacion_): cada edición con cambios
+ * graba la foto en Historia Y completa FechaHoraModif en la misma operación;
+ * una edición sin cambios no hace ninguna de las dos. Entonces:
+ *   FechaHoraModif vacío  ⇔  no hay historial  → respuesta instantánea, sin backend.
+ *   Con ediciones → el modal abre al instante con el estado actual (en memoria)
+ *   y completa los cambios anteriores cuando llegan. Caché por 'id|fechaHoraModif':
+ *   si la comunicación se edita, la clave cambia sola.
+ */
+function claveHist_(c) { return c.id + '|' + (c.fechaHoraModif || ''); }
+function itemActualHist_(c) {
+  return {
+    estado: c.estado || 'Activo', observacion: c.observacion, hashtags: c.hashtags,
+    fechaHora: c.fechaHoraModif || c.fechaHoraCarga, usuario: c.usuarioModif || c.usuarioCarga, esActual: true
+  };
+}
+function htmlItemsHist_(items, previo) {
+  return items.map(function (h, i) {
+    const ant = i > 0 ? items[i - 1] : previo;
+    let delta = '';
+    if (ant) { const txt = _diffFechaHora(ant.fechaHora, h.fechaHora); if (txt) delta = '<div class="tl-delta">' + txt + '</div>'; }
+    const est = h.estado || 'Activo';
+    return delta + '<div class="tl-item"><div class="tl-dot ' + claveEstado(est) + (h.esActual ? ' tl-dot-actual' : '') + '">' + escaparHtml(est.slice(0, 2).toUpperCase()) + '</div>' +
+      '<div class="tl-body">' + (h.esActual ? '<div class="tl-actual-label">Estado actual</div>' : '') +
+      '<div class="tl-fecha">' + escaparHtml(fmtFechaHora(h.fechaHora)) + '</div>' +
+      '<div class="tl-estado">' + escaparHtml(est) + '</div>' +
+      (h.observacion ? '<div class="tl-obs">' + escaparHtml(h.observacion) + '</div>' : '') +
+      (h.hashtags ? '<div class="tl-obs">' + escaparHtml(h.hashtags) + '</div>' : '') +
+      '<div class="tl-usr">por ' + escaparHtml(h.usuario || '—') + '</div></div></div>';
+  }).join('');
+}
+/** Línea de tiempo: fotos anteriores (o un aviso en su lugar) + estado actual. */
+function pintarHist_(body, c, anteriores, avisoHtml) {
+  const actual = itemActualHist_(c);
+  body.innerHTML = '<div class="timeline">' +
+    (anteriores && anteriores.length ? htmlItemsHist_(anteriores, null) : (avisoHtml || '')) +
+    htmlItemsHist_([actual], anteriores && anteriores.length ? anteriores[anteriores.length - 1] : null) +
+    '</div>';
+}
+
 async function abrirHistorial(id) {
   const c = estado.comunicaciones.find(function (x) { return x.id === id; });
   if (!c) return;
+  const token = ++estado.histToken;
   const body = document.getElementById('modal-hist-body');
   document.getElementById('modal-hist-titulo').textContent = 'Historial: ' + c.tipo + ' ' + c.numero;
-  body.innerHTML = '<div style="text-align:center;padding:20px"><div class="spinner"></div></div>';
+
+  // 1) Sin ediciones → instantáneo, sin backend
+  if (!c.fechaHoraModif) {
+    body.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">Sin historial de ediciones.<br><span style="font-size:.75rem">Cargada el ' + escaparHtml(fmtFechaHora(c.fechaHoraCarga)) + ' por ' + escaparHtml(c.usuarioCarga || '—') + '</span></div>';
+    abrirModal('modal-historial');
+    return;
+  }
+
+  // 2) Con ediciones y en caché → instantáneo
+  const clave = claveHist_(c);
+  if (estado.histCache[clave]) {
+    pintarHist_(body, c, estado.histCache[clave], '<div class="tl-nota">No se encontraron cambios anteriores en la hoja Historia.</div>');
+    abrirModal('modal-historial');
+    return;
+  }
+
+  // 3) Con ediciones, sin caché → modal ya, cambios anteriores cuando lleguen
+  pintarHist_(body, c, null, '<div class="tl-cargando"><span class="btn-mini-spin"></span>Cargando cambios anteriores…</div>');
   abrirModal('modal-historial');
   try {
     const r = await api('getHistorial', { id: id });
-    const todos = (r.historial || []).concat([{
-      estado: c.estado || 'Activo', observacion: c.observacion, hashtags: c.hashtags,
-      fechaHora: c.fechaHoraModif || c.fechaHoraCarga, usuario: c.usuarioModif || c.usuarioCarga, esActual: true
-    }]);
-    if (todos.length === 1) {
-      body.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">Sin historial de ediciones.<br><span style="font-size:.75rem">Cargada el ' + escaparHtml(fmtFechaHora(c.fechaHoraCarga)) + ' por ' + escaparHtml(c.usuarioCarga) + '</span></div>';
-      return;
-    }
-    body.innerHTML = '<div class="timeline">' + todos.map(function (h, i) {
-      let delta = '';
-      if (i > 0) { const txt = _diffFechaHora(todos[i - 1].fechaHora, h.fechaHora); if (txt) delta = '<div class="tl-delta">' + txt + '</div>'; }
-      const est = h.estado || 'Activo';
-      return delta + '<div class="tl-item"><div class="tl-dot ' + claveEstado(est) + (h.esActual ? ' tl-dot-actual' : '') + '">' + escaparHtml(est.slice(0, 2).toUpperCase()) + '</div>' +
-        '<div class="tl-body">' + (h.esActual ? '<div class="tl-actual-label">Estado actual</div>' : '') +
-        '<div class="tl-fecha">' + escaparHtml(fmtFechaHora(h.fechaHora)) + '</div>' +
-        '<div class="tl-estado">' + escaparHtml(est) + '</div>' +
-        (h.observacion ? '<div class="tl-obs">' + escaparHtml(h.observacion) + '</div>' : '') +
-        (h.hashtags ? '<div class="tl-obs">' + escaparHtml(h.hashtags) + '</div>' : '') +
-        '<div class="tl-usr">por ' + escaparHtml(h.usuario || '—') + '</div></div></div>';
-    }).join('') + '</div>';
+    const anteriores = r.historial || [];
+    estado.histCache[clave] = anteriores;
+    if (token !== estado.histToken || !document.getElementById('modal-historial').classList.contains('open')) return;
+    pintarHist_(body, c, anteriores, '<div class="tl-nota">No se encontraron cambios anteriores en la hoja Historia.</div>');
   } catch (err) {
-    body.innerHTML = '<div style="color:var(--danger);text-align:center;padding:20px">⚠ ' + escaparHtml(err.message) + '</div>';
+    if (token !== estado.histToken || !document.getElementById('modal-historial').classList.contains('open')) return;
+    pintarHist_(body, c, null, '<div class="tl-cargando" style="color:var(--danger)">⚠ No se pudieron cargar los cambios anteriores. ' + escaparHtml(err.message) +
+      ' <button class="btn btn-secondary btn-sm" id="btn-hist-reintentar">Reintentar</button></div>');
+    document.getElementById('btn-hist-reintentar').onclick = function () { abrirHistorial(id); };
   }
 }
 function _diffFechaHora(a, b) {
@@ -2484,7 +2732,8 @@ function _diffFechaHora(a, b) {
   const hs = Math.floor(mins / 60);
   if (hs < 24) return hs + ' hs ' + (mins % 60) + ' min';
   const dias = Math.floor(hs / 24), hRest = hs % 24;
-  return hRest > 0 ? dias + ' días ' + hRest + ' hs' : dias + ' días';
+  const txtDias = dias + (dias === 1 ? ' día' : ' días');   // v6.0.2 — "1 día", no "1 días"
+  return hRest > 0 ? txtDias + ' ' + hRest + ' hs' : txtDias;
 }
 
 // ══════════════════════════════════════════════
