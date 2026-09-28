@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title"></title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #f8f7f4;
+    --surface:   #ffffff;
+    --border:    #e8e4dc;
+    --accent:    #d97706;
+    --accent-lt: #fef3c7;
+    --text:      #1a1612;
+    --muted:     #7a6f62;
+    --dark:      #0f172a;
+    --radius:    10px;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--dark);
+    padding: 52px 0 44px;
+    text-align: center;
+  }
+  .header-eyebrow {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+  .header-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(52px, 8vw, 88px);
+    letter-spacing: 0.04em;
+    color: #ffffff;
+    line-height: 1;
+    margin-bottom: 14px;
+  }
+  .header-subtitle {
+    font-size: 15px;
+    font-weight: 300;
+    color: #94a3b8;
+    letter-spacing: 0.02em;
+  }
+  .header-rule {
+    width: 40px; height: 2px;
+    background: var(--accent);
+    margin: 20px auto 0; border: none;
+  }
+
+  /* ── LAYOUT ── */
+  .page {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+
+  /* ── SECCIÓN ── */
+  .section { margin-top: 56px; }
+  .section-label {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── QUÉ ES ── */
+  .intro-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+  }
+  .intro-card p {
+    color: var(--muted);
+    font-weight: 300;
+    font-size: 15.5px;
+    line-height: 1.75;
+  }
+  .intro-card strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* ── TIPOS DE DOCUMENTO ── */
+  .doc-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .doc-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 20px 20px;
+    text-align: center;
+    transition: box-shadow 0.2s, border-color 0.2s;
+  }
+  .doc-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+    border-color: #d1c9bc;
+  }
+  .doc-badge {
+    display: inline-block;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    background: var(--accent-lt);
+    border-radius: 6px;
+    padding: 2px 12px 0;
+    margin-bottom: 10px;
+  }
+  .doc-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .doc-desc {
+    font-size: 12.5px;
+    color: var(--muted);
+    font-weight: 300;
+    line-height: 1.5;
+  }
+
+  /* ── MÓDULOS ── */
+  .module-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .module-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    align-items: center;
+    gap: 14px;
+    transition: background 0.15s;
+  }
+  .module-item:hover { background: #fdfcfb; }
+  .module-icon { font-size: 18px; text-align: center; flex-shrink: 0; }
+  .module-name { font-size: 14px; font-weight: 500; color: var(--text); }
+  .module-desc {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 300;
+    text-align: right;
+    max-width: 340px;
+  }
+
+  /* ── FLUJO ── */
+  .flow-steps { display: flex; flex-direction: column; gap: 0; }
+  .flow-step {
+    display: grid;
+    grid-template-columns: 40px 1fr;
+    gap: 16px;
+    align-items: flex-start;
+    position: relative;
+    padding-bottom: 24px;
+  }
+  .flow-step:last-child { padding-bottom: 0; }
+  .flow-step:not(:last-child) .step-line {
+    position: absolute;
+    left: 19px; top: 36px; bottom: 0;
+    width: 2px;
+    background: var(--border);
+  }
+  .step-num {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: var(--dark);
+    color: #fff;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .step-body { padding-top: 6px; }
+  .step-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+  .step-detail { font-size: 13px; color: var(--muted); font-weight: 300; line-height: 1.55; }
+
+  /* ── TIPS ── */
+  .tips-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .tip-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+  }
+  .tip-icon { font-size: 20px; margin-bottom: 8px; }
+  .tip-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .tip-text { font-size: 12.5px; color: var(--muted); font-weight: 300; line-height: 1.55; }
+
+  /* ── FOOTER ── */
+  .footer {
+    margin-top: 64px;
+    border-top: 1px solid var(--border);
+    padding-top: 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .footer-left { font-size: 12px; color: var(--muted); font-weight: 300; }
+  .footer-right { font-size: 11.5px; color: #bbb0a0; font-weight: 300; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 580px) {
+    .doc-grid { grid-template-columns: 1fr; }
+    .tips-grid { grid-template-columns: 1fr; }
+    .module-item { grid-template-columns: 36px 1fr; }
+    .module-desc { text-align: left; grid-column: 1 / -1; padding-left: 50px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <p class="header-eyebrow" id="hdr-eyebrow"></p>
+  <h1 class="header-title" id="hdr-title"></h1>
+  <p class="header-subtitle" id="hdr-subtitle"></p>
+  <hr class="header-rule">
+</header>
+
+<div class="page">
+  <section class="section" id="sec-quees"></section>
+  <section class="section" id="sec-documentos"></section>
+  <section class="section" id="sec-modulos"></section>
+  <section class="section" id="sec-flujo"></section>
+  <section class="section" id="sec-tips"></section>
+  <footer class="footer" id="pie"></footer>
+</div>
+
+<script>
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║           CONTENIDO EDITABLE — modificar solo aquí              ║
+// ║  Cada sección es independiente. Podés agregar o quitar ítems    ║
+// ║  en los arrays y el formato se ajusta solo.                     ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+const CONTENIDO = {
+
+  // ── Pestaña del browser ──────────────────────────────────────────
+  paginaTitulo: "LibroObra — Guía de Referencia Rápida",
+
+  // ── Header ──────────────────────────────────────────────────────
+  header: {
+    eyebrow:   "Guía de referencia rápida",
+    titulo:    "Libro Obra",
+    subtitulo: "Repositorio de comunicaciones y minutas de obra",
+  },
+
+  // ── Sección: ¿Qué es? ───────────────────────────────────────────
+  // Usá <strong>texto</strong> para negritas dentro del párrafo
+  quees: {
+    labelSeccion: "¿Qué es?",
+    parrafo: "<strong>LibroObra</strong> es el repositorio digital centralizado de comunicaciones y actas de obra. Permite <strong>registrar, clasificar y recuperar</strong> cualquier documento — órdenes de servicio, notas de pedido, minutas de reuniones — con sus archivos adjuntos, con etiquetas y fechas, de forma ordenada y trazable a lo largo del proyecto.",
+  },
+
+  // ── Sección: Tipos de documento ─────────────────────────────────
+  // Agregá o quitá objetos { badge, nombre, desc } libremente
+  documentos: {
+    labelSeccion: "Tipos de documento",
+    items: [
+      { badge: "OS", nombre: "Orden de Servicio",   desc: "Instrucciones formales emitidas al contratistas del cliente." },
+      { badge: "NP", nombre: "Nota de Pedido",      desc: "Solicitudes o requerimientos elevados por el contratista a la inspección." },
+      { badge: "MR", nombre: "Minuta de Reunión", desc: "Minutas de reuniones de obra con acuerdos, responsables y fechas comprometidas." },
+    ],
+  },
+
+  // ── Sección: Módulos ────────────────────────────────────────────
+  // Agregá o quitá objetos { icon, nombre, desc } libremente
+  modulos: {
+    labelSeccion: "Módulos de la aplicación",
+    items: [
+      { icon: "📋", nombre: "Comunicaciones",    desc: "Carga, edición y consulta de OS, NP y RM del proyecto." },
+      { icon: "📎", nombre: "Adjuntos",           desc: "Archivos vinculados a cada comunicación — PDFs, imágenes, planillas." },
+      { icon: "🏷️", nombre: "Etiquetas",          desc: "Palabras clave para clasificar y encontrar documentos rápidamente, una o multiples" },
+      { icon: "📍", nombre: "Hitos",              desc: "Hitos del proyecto, para seguimiento." },
+      { icon: "🔍", nombre: "Búsqueda y Filtros", desc: "Filtrado por tipo, etiqueta, fecha o texto libre sobre todo el repositorio." },
+      { icon: "📊", nombre: "Dashboard",          desc: "Vista resumen de volumen por tipo de documento, etiqueta y período." },
+      { icon: "⚙️", nombre: "Administración",     desc: "Gestión de obras y usuarios — solo para perfiles con acceso de administrador." },
+    ],
+  },
+
+  // ── Sección: Flujo básico ────────────────────────────────────────
+  // Agregá o quitá objetos { titulo, detalle } libremente
+  flujo: {
+    labelSeccion: "Flujo básico de uso",
+    pasos: [
+      { titulo: "Ingresá con tu cuenta",              detalle: "Iniciá sesión con tu cuenta Google autorizada. Solo acceden usuarios habilitados por el administrador." },
+      { titulo: "Obra predefinida / seleccionable",                   detalle: "Elegí el proyecto sobre el que vas a trabajar. El repositorio es independiente por obra." },
+      { titulo: "Cargá o consultá comunicaciones",    detalle: "Registrá una nueva OS, NP o RM completando los campos del formulario. Para consultar, usá los filtros o el buscador de texto libre." },
+      { titulo: "Adjuntá archivos y asigná etiquetas",detalle: "Subí los documentos vinculados y elegí las etiquetas que correspondan. Esto facilita la búsqueda posterior." },
+      { titulo: "Revisá el Dashboard",                detalle: "El dashboard muestra el estado general del repositorio: totales por tipo, distribución por etiqueta y actividad reciente." },
+    ],
+  },
+
+  // ── Sección: Buenas prácticas ────────────────────────────────────
+  // Agregá o quitá objetos { icon, titulo, texto } libremente
+  tips: {
+    labelSeccion: "Buenas prácticas",
+    items: [
+      { icon: "🏷️", titulo: "Usá etiquetas consistentes",     texto: "Acordá con el equipo un set fijo de etiquetas. Una nomenclatura uniforme hace que el buscador funcione mucho mejor." },
+      { icon: "📎", titulo: "Adjuntá siempre el PDF original",texto: "El registro en LibroObra no reemplaza el documento — es su referencia. Subir el archivo original garantiza trazabilidad completa." },
+      { icon: "📍", titulo: "Registrá los hitos al cargar",   texto: "Si la comunicación implica un plazo o compromiso, cargalo como hito en el momento. Evita perder fechas clave." },
+      { icon: "🔢", titulo: "Respetá la numeración",          texto: "Usá el número de documento tal como figura en el papel. Facilita la búsqueda y la correspondencia con el expediente físico." },
+      { icon: "🔔", titulo: "Avisos",                         texto: "Podés editar el registro, y marcarlo para aviso, que necesita una acción y un recordatorio." },
+    ],
+  },
+
+  // ── Footer ──────────────────────────────────────────────────────
+  footer: {
+    izquierda: "Libro Obra — Guía de referencia rápida",
+    derecha:   "Junio 2026",
+  },
+
+};
+
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║              MOTOR DE RENDER — no modificar                     ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+(function render() {
+  const C = CONTENIDO;
+
+  // Título pestaña
+  document.getElementById('page-title').textContent = C.paginaTitulo;
+
+  // Header
+  document.getElementById('hdr-eyebrow').textContent  = C.header.eyebrow;
+  document.getElementById('hdr-title').textContent    = C.header.titulo;
+  document.getElementById('hdr-subtitle').textContent = C.header.subtitulo;
+
+  // ── ¿Qué es? ──
+  const qe = C.quees;
+  document.getElementById('sec-quees').innerHTML = `
+    <p class="section-label">${qe.labelSeccion}</p>
+    <div class="intro-card"><p>${qe.parrafo}</p></div>`;
+
+  // ── Tipos de documento ──
+  const td = C.documentos;
+  document.getElementById('sec-documentos').innerHTML = `
+    <p class="section-label">${td.labelSeccion}</p>
+    <div class="doc-grid">
+      ${td.items.map(d => `
+        <div class="doc-card">
+          <div class="doc-badge">${d.badge}</div>
+          <div class="doc-name">${d.nombre}</div>
+          <div class="doc-desc">${d.desc}</div>
+        </div>`).join('')}
+    </div>`;
+
+  // ── Módulos ──
+  const md = C.modulos;
+  document.getElementById('sec-modulos').innerHTML = `
+    <p class="section-label">${md.labelSeccion}</p>
+    <div class="module-list">
+      ${md.items.map(m => `
+        <div class="module-item">
+          <span class="module-icon">${m.icon}</span>
+          <span class="module-name">${m.nombre}</span>
+          <span class="module-desc">${m.desc}</span>
+        </div>`).join('')}
+    </div>`;
+
+  // ── Flujo ──
+  const fl = C.flujo;
+  document.getElementById('sec-flujo').innerHTML = `
+    <p class="section-label">${fl.labelSeccion}</p>
+    <div class="flow-steps">
+      ${fl.pasos.map((p, i) => `
+        <div class="flow-step">
+          <div class="step-num">${i + 1}</div>
+          ${i < fl.pasos.length - 1 ? '<div class="step-line"></div>' : ''}
+          <div class="step-body">
+            <div class="step-title">${p.titulo}</div>
+            <div class="step-detail">${p.detalle}</div>
+          </div>
+        </div>`).join('')}
+    </div>`;
+
+  // ── Tips ──
+  const tp = C.tips;
+  document.getElementById('sec-tips').innerHTML = `
+    <p class="section-label">${tp.labelSeccion}</p>
+    <div class="tips-grid">
+      ${tp.items.map(t => `
+        <div class="tip-card">
+          <div class="tip-icon">${t.icon}</div>
+          <div class="tip-title">${t.titulo}</div>
+          <div class="tip-text">${t.texto}</div>
+        </div>`).join('')}
+    </div>`;
+
+  // ── Footer ──
+  const ft = C.footer;
+  document.getElementById('pie').innerHTML = `
+    <div class="footer-left">${ft.izquierda}</div>
+    <div class="footer-right">${ft.derecha}</div>`;
+})();
+</script>
+</body>
+</html>
