@@ -3,10 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra v6.0.2</title>
+<title>LibroObra v6.1.0</title>
 <!--
+  index_libroobra_v6_1_0.html — LibroObra v6.1.0 (05-oct-2026)
+  Backend: gas_libroobra_v6_1_0.gs (misma API_URL: publicar como Nueva versión
+  de la implementación actual).
+
+  QUÉ CAMBIÓ EN v6.1.0 (respecto a v6.0.2) — diseño acordado el 05-oct:
+   - Semáforo de plazos (calculado acá, no se graba): verde > 3 días,
+     amarillo ≤ 3 (incluye "hoy"), rojo vencida, ✓ respondida, vacío si no
+     requiere respuesta o está anulada. Columna "Plazo" (ordenable por
+     urgencia), filtro "Pendientes de respuesta" y card "Pendientes ·
+     Vencidas" en el dashboard (lleva al filtro).
+   - Vínculos "Responde a" / "Referencia" (el documento que se mira es el
+     origen): en el alta, dos campos con varios documentos cada uno (sugiere
+     primero los pendientes por urgencia); en Ver/Editar, "+ Vincular".
+     Todo idempotente (IdVinculo se genera acá).
+   - Hilo en Ver/Editar: Responde a · Respondido por · Referencias · Citado
+     en (solo vínculos directos). Tocar un documento abre su modal; × para
+     dar de baja (con confirmación).
+   - Panel "Inconsistencias de numeración" en el dashboard (huecos por tipo
+     desde el 1, calculados en el dashboard precalculado del backend).
+   - Excel: + Requiere respuesta, Vence, Estado respuesta, Plazo, Responde a,
+     Referencias.
+   - Historial: muestra el estado de respuesta de cada foto.
+   - Por ahora solo el administrador da de alta, edita y da de baja
+     (SOLO_ADMIN_EDITA en el backend); el resto ve "Solo lectura".
+
+  (historia anterior)
   index_libroobra_v6_0_2.html — LibroObra v6.0.2 (28-sep-2026)
-  Backend: gas_libroobra_v6_0_0.gs (SIN cambios — entrega solo frontend, misma API_URL).
 
   QUÉ CAMBIÓ EN v6.0.2 (respecto a v6.0.1):
    - Carga en segundo plano: si hay copia local del dashboard, NO hay velo.
@@ -635,6 +660,63 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 .tarea-acciones button.primario { background: var(--accent); border-color: var(--accent-border); color: #fff; }
 .tarea-cerrar { background: none; border: none; color: var(--muted); font-size: .95rem; line-height: 1; padding: 0 2px; }
 
+/* ══════════════════════════════════════════════
+   v6.1.0 — SEMÁFORO, VÍNCULOS, HILO, INCONSISTENCIAS
+══════════════════════════════════════════════ */
+.sem { display: inline-flex; align-items: center; gap: 5px; font-size: .74rem; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sem i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.sem-verde { color: #166534; } .sem-verde i { background: #16a34a; }
+.sem-amarillo { color: #854d0e; } .sem-amarillo i { background: #eab308; }
+.sem-rojo { color: #991b1b; } .sem-rojo i { background: #dc2626; }
+.sem-ok { color: #166534; }
+.sem-sin { color: var(--muted); font-weight: 500; font-style: italic; }
+
+.filtro-btn.activo-pend { background: #fef2f2; border-color: #dc2626; color: #991b1b; }
+.stat-card.pend { border-left-color: #dc2626; cursor: pointer; }
+.stat-card.pend .stat-value small { font-size: 1.4rem; color: #dc2626; }
+
+.vinc-picker { display: flex; flex-direction: column; gap: 6px; }
+.vinc-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.vinc-chips:empty { display: none; }
+.vinc-chip {
+  display: inline-flex; align-items: center; gap: 4px; background: #eef2ff; color: #3730a3; border: 1px solid #c7d2fe;
+  border-radius: 99px; padding: 2px 4px 2px 10px; font-size: .76rem; font-weight: 600; white-space: nowrap;
+}
+.vinc-chip button { background: none; border: none; color: #3730a3; font-size: .95rem; line-height: 1; padding: 0 4px; }
+.vinc-sug { border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); max-height: 230px; overflow-y: auto; box-shadow: var(--shadow); }
+.vinc-sug:empty { display: none; }
+.vinc-sug-tit { font-size: .64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 6px 10px 2px; }
+.vinc-item, .hilo-item {
+  display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 8px;
+  padding: 6px 10px; font-size: .8rem; cursor: pointer; border-top: 1px solid var(--border);
+}
+.vinc-item:first-child, .vinc-sug-tit + .vinc-item { border-top: none; }
+.vinc-item:hover, .vinc-item.activo { background: #f8fafc; }
+.vinc-num { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vinc-asunto { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.vinc-fecha { font-size: .7rem; color: var(--muted); white-space: nowrap; }
+.vinc-vacio { font-size: .76rem; color: var(--muted); padding: 8px 10px; }
+
+.hilo { border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); padding: 4px 0; }
+.hilo-grupo-tit { font-size: .64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 8px 12px 2px; }
+.hilo-item { grid-template-columns: auto auto 1fr auto auto; border-top: none; padding: 5px 12px; }
+.hilo-item:hover { background: var(--surface); }
+.hilo-item.anulado .vinc-num, .hilo-item.anulado .vinc-asunto { text-decoration: line-through; opacity: .6; }
+.hilo-baja { background: none; border: 1px solid transparent; color: var(--muted); font-size: 1rem; line-height: 1; padding: 0 6px; border-radius: var(--radius-sm); }
+.hilo-baja:hover { border-color: #fecaca; color: #991b1b; background: #fef2f2; }
+.hilo-vacio { font-size: .78rem; color: var(--muted); padding: 10px 12px; }
+.hilo-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+.inc-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; user-select: none; }
+.inc-resumen { font-size: .8rem; font-weight: 600; }
+.inc-resumen.hay { color: #92400e; }
+.inc-resumen.nada { color: var(--success); }
+.inc-body { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.inc-body.collapsed { display: none; }
+.inc-fila { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: .8rem; }
+.inc-rangos { color: var(--text); }
+.inc-nota { font-size: .72rem; color: var(--muted); font-style: italic; }
+
 /* Historial: cambios anteriores cargando (v6.0.2) */
 .tl-cargando { display: flex; align-items: center; gap: 8px; font-size: .75rem; color: var(--muted); padding: 2px 0 14px 6px; }
 .tl-cargando .btn-mini-spin { flex-shrink: 0; }
@@ -657,7 +739,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   <div class="caja">
     <span class="caja-emoji">📋</span>
     <div class="caja-logo">LibroObra</div>
-    <div class="caja-version" id="version-login">v6.0.2</div>
+    <div class="caja-version" id="version-login">v6.1.0</div>
     <div class="caja-sub">Registro de comunicaciones de obra</div>
 
     <div id="paso-email" class="login-paso activo">
@@ -721,7 +803,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <button class="hdr-btn" id="btn-cambiar-obra" onclick="cambiarObra()">Cambiar obra</button>
     <button class="hdr-btn hdr-btn-instalar hidden" id="btn-instalar">Instalar</button>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version" id="version-app">v6.0.2</span>
+    <span class="hdr-version" id="version-app">v6.1.0</span>
     <button class="hdr-btn" onclick="confirmarCerrarSesion()">Salir</button>
   </header>
 
@@ -801,9 +883,21 @@ textarea.form-control { resize: vertical; min-height: 66px; }
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" style="margin-bottom:18px">
         <div class="card-title">Hashtags más usados</div>
         <div class="hashtags-cloud" id="dash-hashtags"></div>
+      </div>
+
+      <!-- v6.1.0 — Inconsistencias de numeración (calculadas en el dashboard precalculado) -->
+      <div class="card" id="card-inc">
+        <div class="inc-header" onclick="toggleInc()">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div class="card-title" style="margin-bottom:0">Inconsistencias de numeración</div>
+            <span class="inc-resumen" id="inc-resumen">—</span>
+          </div>
+          <span class="hi-panel-toggle collapsed" id="inc-toggle">▾</span>
+        </div>
+        <div class="inc-body collapsed" id="inc-body"></div>
       </div>
     </section>
 
@@ -820,11 +914,13 @@ textarea.form-control { resize: vertical; min-height: 66px; }
       <div class="filtros-wrap">
         <span class="filtro-label">Tipo:</span>
         <span id="filtros-tipo" style="display:contents"></span>
+        <span class="filtro-label" style="margin-left:8px">Respuesta:</span>
+        <button class="filtro-btn" id="filtro-pend" onclick="filtrarPendientes(!estado.filtroPendientes)">Pendientes de respuesta</button>
         <span id="filtro-hashtag-activo" class="hidden"></span>
       </div>
       <div class="dt-wrap">
         <table id="tabla-com" class="display" style="width:100%">
-          <thead><tr><th>Tipo</th><th>N°</th><th>Fecha</th><th>Asunto</th><th>Etiquetas</th><th>Hashtags</th><th>Estado</th><th>Adj.</th><th></th></tr></thead>
+          <thead><tr><th>Tipo</th><th>N°</th><th>Fecha</th><th>Asunto</th><th>Etiquetas</th><th>Hashtags</th><th>Estado</th><th>Plazo</th><th>Adj.</th><th></th></tr></thead>
           <tbody id="tbody-com"></tbody>
         </table>
       </div>
@@ -921,6 +1017,19 @@ textarea.form-control { resize: vertical; min-height: 66px; }
           <div class="hash-sugerencias" id="carga-hashtags-sug"></div>
         </div>
       </div>
+      <!-- v6.1.0 — vínculos del alta: este documento es el origen -->
+      <div class="form-row full">
+        <div class="form-group">
+          <label class="form-label">Responde a <span style="text-transform:none;font-weight:400">(opcional · uno o varios)</span></label>
+          <div class="vinc-picker" id="carga-resp"></div>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label class="form-label">Referencias <span style="text-transform:none;font-weight:400">(opcional · "como se indica en…")</span></label>
+          <div class="vinc-picker" id="carga-ref"></div>
+        </div>
+      </div>
       <div class="form-row full">
         <div class="form-group"><label class="form-label">Observación</label><textarea class="form-control" id="carga-obs" rows="2" placeholder="Notas adicionales (opcional)"></textarea></div>
       </div>
@@ -964,6 +1073,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
         <div class="form-group"><label class="form-label">Resumen</label><div class="info-lectura" id="edit-resumen"></div><div class="info-meta" id="edit-meta"></div></div>
       </div>
       <div class="form-row">
+        <div class="form-group"><label class="form-label">Plazo de respuesta</label><div class="info-lectura" id="edit-plazo"></div></div>
         <div class="form-group">
           <label class="form-label">Estado</label>
           <select class="form-control" id="edit-estado">
@@ -986,10 +1096,52 @@ textarea.form-control { resize: vertical; min-height: 66px; }
       <div class="form-row full">
         <div class="form-group"><label class="form-label">Observación</label><textarea class="form-control" id="edit-obs" rows="3"></textarea></div>
       </div>
+      <!-- v6.1.0 — Hilo: vínculos directos en las dos direcciones -->
+      <div class="form-row full">
+        <div class="form-group">
+          <div class="hilo-cabecera">
+            <label class="form-label">Hilo</label>
+            <button class="btn btn-secondary btn-sm hidden" id="btn-vincular" onclick="abrirModalVincular()">+ Vincular</button>
+          </div>
+          <div class="hilo" id="edit-hilo"></div>
+        </div>
+      </div>
     </div>
     <div class="modal-footer" id="edit-footer">
       <button class="btn btn-secondary" onclick="cerrarModal('modal-editar')">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarEdicion()" id="btn-guardar-edicion">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL — VINCULAR (v6.1.0) ═══════════════ -->
+<div class="modal-overlay" id="modal-vincular">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <span class="modal-title" id="vinc-titulo">Vincular</span>
+      <button class="modal-close" onclick="cerrarModal('modal-vincular')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row full">
+        <div class="form-group">
+          <label class="form-label">Tipo de vínculo</label>
+          <select class="form-control" id="vinc-tipo" onchange="cambiarTipoVincular()">
+            <option value="Responde a">Responde a</option>
+            <option value="Referencia">Referencia</option>
+          </select>
+          <div class="form-hint" id="vinc-ayuda"></div>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label class="form-label">Documentos</label>
+          <div class="vinc-picker" id="vinc-picker"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="cerrarModal('modal-vincular')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarVincular()" id="btn-guardar-vinc">Vincular</button>
     </div>
   </div>
 </div>
@@ -1073,7 +1225,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 // ══════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════
-const APP_VERSION = 'v6.0.2';
+const APP_VERSION = 'v6.1.0';
 const API_URL = 'https://script.google.com/macros/s/AKfycbxDN2F_K6z4wQXDJAyyZ6EdoSqoQgHv8d8f7gXGo-QYdke3DXW6hvZtEnmEy9xFpjTO/exec';
 const SESION_KEY = 'lo_sesion';
 const OBRA_KEY = 'lo_obra_actual';
@@ -1128,7 +1280,10 @@ const estado = {
   dashEsCopiaLocal: false,            // v6.0.2 — el dashboard en pantalla viene de lo_dash_{obraId}, todavía sin confirmar
   dashFalloRecalc: false,             // v6.0.2 — falló el recálculo en segundo plano (leyenda "Sin calcular")
   histCache: {},                      // v6.0.2 — historial por 'id|fechaHoraModif' (se invalida solo al editar)
-  histToken: 0                        // v6.0.2 — descarta respuestas de un historial que ya no está abierto
+  histToken: 0,                       // v6.0.2 — descarta respuestas de un historial que ya no está abierto
+  filtroPendientes: false,            // v6.1.0 — filtro "Pendientes de respuesta"
+  editSnapshot: '',                   // v6.1.0 — campos del modal Editar al abrir (avisa cambios sin guardar al navegar el Hilo)
+  pickers: {}                         // v6.1.0 — selectores de documentos (alta: resp/ref · vincular)
 };
 
 // ══════════════════════════════════════════════
@@ -1232,6 +1387,62 @@ function badgeTipo(tipo) {
   return '<span class="badge" style="background:' + c.bg + ';color:' + c.fg + ';border-color:' + c.base + '">' + escaparHtml(tipo) + '</span>';
 }
 function badgeEstado(est) { return '<span class="badge badge-' + claveEstado(est) + '">' + escaparHtml(est || 'Activo') + '</span>'; }
+
+// ══════════════════════════════════════════════
+// v6.1.0 — SEMÁFORO DE PLAZOS (se calcula acá, no se graba)
+// ══════════════════════════════════════════════
+const SEM_AMARILLO_DIAS = 3;
+const VINC_RESPONDE = 'Responde a', VINC_REFERENCIA = 'Referencia';
+
+/** Días corridos de hoy al vencimiento (negativo = vencida). null si no hay fecha. */
+function diasAlVencimiento(iso) {
+  const d = _parseISO(iso), h = _parseISO(hoyISO());
+  return d && h ? Math.round((d - h) / 86400000) : null;
+}
+function esPendiente(c) { return !!c.requiereRespuesta && c.estado !== 'Anulado' && c.estadoRespuesta === 'Pendiente'; }
+function esVencida(c) { if (!esPendiente(c)) return false; const d = diasAlVencimiento(c.fechaVencimiento); return d !== null && d < 0; }
+/**
+ * { cls, txt, titulo, orden } o null (no requiere respuesta / anulada).
+ * orden: urgencia para ordenar la columna Plazo (vencidas primero).
+ */
+function semaforo(c) {
+  if (!c || !c.requiereRespuesta || c.estado === 'Anulado') return null;
+  if (c.estadoRespuesta === 'Respondida') return { cls: 'sem-ok', txt: '✓', titulo: 'Respondida', orden: 900000 };
+  const d = diasAlVencimiento(c.fechaVencimiento);
+  if (d === null) return { cls: 'sem-sin', txt: 'sin plazo', titulo: 'Requiere respuesta pero el tipo no tiene plazo en la hoja Tipos', orden: 800000 };
+  const vence = ' · vence ' + fmtFecha(c.fechaVencimiento);
+  if (d < 0) return { cls: 'sem-rojo', txt: '−' + (-d) + ' d', titulo: 'Vencida hace ' + (-d) + (d === -1 ? ' día' : ' días') + vence, orden: d };
+  if (d === 0) return { cls: 'sem-amarillo', txt: 'hoy', titulo: 'Vence hoy', orden: 0 };
+  if (d <= SEM_AMARILLO_DIAS) return { cls: 'sem-amarillo', txt: d + ' d', titulo: 'Faltan ' + d + (d === 1 ? ' día' : ' días') + vence, orden: d };
+  return { cls: 'sem-verde', txt: d + ' d', titulo: 'Faltan ' + d + ' días' + vence, orden: d };
+}
+function htmlSemaforo(c) {
+  const s = semaforo(c);
+  if (!s) return '';
+  return '<span class="sem ' + s.cls + '" title="' + escaparHtml(s.titulo) + '">' + (s.cls === 'sem-ok' || s.cls === 'sem-sin' ? '' : '<i></i>') + escaparHtml(s.txt) + '</span>';
+}
+/** Texto del plazo para el Excel (lo mismo que el semáforo, sin color). */
+function textoPlazo(c) { const s = semaforo(c); return s ? s.txt : ''; }
+
+// ── Vínculos en memoria (solo activos: la carga pesada ya filtra los Inactivo) ──
+function comPorId(id) { return estado.comunicaciones.find(function (x) { return x.id === id; }) || null; }
+function descDoc(c) { return c ? c.tipo + ' ' + c.numero : '(documento no encontrado)'; }
+function vinculosDe(id) {
+  const out = { respondeA: [], respondidoPor: [], referencias: [], citadoEn: [] };
+  estado.vinculos.forEach(function (v) {
+    if (v.estado === 'Inactivo') return;
+    if (v.idOrigen === id) (v.tipo === VINC_RESPONDE ? out.respondeA : out.referencias).push({ v: v, otro: v.idDestino });
+    if (v.idDestino === id) (v.tipo === VINC_RESPONDE ? out.respondidoPor : out.citadoEn).push({ v: v, otro: v.idOrigen });
+  });
+  return out;
+}
+function upsertVinculos(lista) {
+  (lista || []).forEach(function (v) {
+    const i = estado.vinculos.findIndex(function (x) { return x.idVinculo === v.idVinculo; });
+    if (v.estado === 'Inactivo') { if (i >= 0) estado.vinculos.splice(i, 1); return; }
+    if (i >= 0) estado.vinculos[i] = v; else estado.vinculos.push(v);
+  });
+}
 
 // ══════════════════════════════════════════════
 // DIÁLOGOS (portados de PreKOM/BDC) + TOAST + ESPERA
@@ -1350,12 +1561,14 @@ function cerrarModal(id) { document.getElementById(id).classList.remove('open');
 // el backend es idempotente (diseño §7.1).
 const ACCIONES_SEGURAS_REINTENTO = new Set([
   'inicializarSesion', 'inicializarObraLiviana', 'inicializarObraPesada', 'validarSesion',
-  'getHistorial', 'getHitosLog', 'recalcularDashboard', 'registrarComunicacion', 'guardarHito'
+  'getHistorial', 'getHitosLog', 'recalcularDashboard', 'registrarComunicacion', 'guardarHito',
+  'crearVinculo', 'bajaVinculo'   // v6.1.0 — idempotentes (IdVinculo generado acá / baja repetida = yaEstaba)
 ]);
 // Mismo alcance que ACCIONES_GET + PWAPIN_ACCIONES_GET del .gs. validarPIN va por POST (el PIN no viaja en la URL).
 const ACCIONES_GET = new Set([
   'inicializarSesion', 'inicializarObraLiviana', 'inicializarObraPesada',
   'getHistorial', 'getHitosLog', 'recalcularDashboard', 'bajaHito',
+  'crearVinculo', 'bajaVinculo',   // v6.1.0
   'solicitarPIN', 'validarSesion'
 ]);
 
@@ -1711,7 +1924,7 @@ function resetDatosObra() {
   if (estado.dtHitos) { estado.dtHitos.destroy(); estado.dtHitos = null; }
   estado.comunicaciones = []; estado.vinculos = []; estado.hitos = []; estado.tipos = []; estado.etiquetas = [];
   estado.dashboard = null; estado.datosListos = false;
-  estado.filtroTipo = 'todos'; estado.filtroHashtag = '';
+  estado.filtroTipo = 'todos'; estado.filtroHashtag = ''; estado.filtroPendientes = false;
   estado.puedeEditar = false; estado.perfil = '';
   estado.dashEsCopiaLocal = false; estado.dashFalloRecalc = false;
   estado.histCache = {};
@@ -1739,8 +1952,10 @@ function pintarHeaderObra() {
   document.getElementById('hdr-obra').innerHTML = '<span class="hdr-obra-prefix">Obra</span>' + escaparHtml(estado.obra.codigoObra) + ' · ' + escaparHtml(estado.obra.nombreObra);
   document.getElementById('hdr-obra').title = estado.obra.codigoObra + ' · ' + estado.obra.nombreObra;
   const perf = document.getElementById('hdr-perfil');
-  perf.textContent = estado.perfil ? textoPerfil() : '';
-  perf.classList.toggle('hidden', !estado.perfil || estado.perfil === 'usuario');
+  // v6.1.0 — con SOLO_ADMIN_EDITA en el backend, todo el que no edita ve "Solo lectura"
+  const txt = !estado.perfil ? '' : estado.perfil === 'admin' ? 'Administrador' : (estado.puedeEditar ? '' : 'Solo lectura');
+  perf.textContent = txt;
+  perf.classList.toggle('hidden', !txt);
 }
 
 function habilitarNav(on) {
@@ -1893,6 +2108,7 @@ function renderDashboard() {
     document.getElementById('tm-filtros').innerHTML = '';
     document.getElementById('treemap-wrap').innerHTML = '<div class="treemap-empty">Sin datos</div>';
     if (_chartInst) { _chartInst.destroy(); _chartInst = null; }
+    renderInconsistencias(null);   // v6.1.0
     return;
   }
   leyenda.textContent = 'Actualizado ' + fmtFechaHora(d.calculadoEn) + ' · ' + (ORIGEN_TXT[d.origen] || d.origen || '') +
@@ -1905,7 +2121,43 @@ function renderDashboard() {
   renderTmFiltros();
   renderTreemap();
   renderHashtagsDash(d.hashtags || []);
+  renderInconsistencias(d);   // v6.1.0
   renderChart();
+}
+
+// ── v6.1.0 — Inconsistencias de numeración (vienen del dashboard precalculado) ──
+let _incAbierto = false;
+function toggleInc() {
+  _incAbierto = !_incAbierto;
+  document.getElementById('inc-body').classList.toggle('collapsed', !_incAbierto);
+  document.getElementById('inc-toggle').classList.toggle('collapsed', !_incAbierto);
+}
+function renderInconsistencias(d) {
+  const res = document.getElementById('inc-resumen');
+  const body = document.getElementById('inc-body');
+  res.className = 'inc-resumen';
+  if (!d) { res.textContent = '—'; body.innerHTML = ''; return; }
+  const inc = d.inconsistencias;
+  if (!inc) {   // dashboard calculado con una versión anterior al v6.1.0
+    res.textContent = 'Tocá Recalcular para verlas';
+    body.innerHTML = '<div class="inc-nota">El dashboard guardado es de una versión anterior. Se completa en el próximo recálculo.</div>';
+    return;
+  }
+  if (!inc.total) {
+    res.classList.add('nada');
+    res.textContent = '✓ Sin saltos de numeración';
+    body.innerHTML = '<div class="inc-nota">Se controlan los números 100 % numéricos de cada tipo, desde el 1. Un número anulado cuenta como existente.</div>';
+    return;
+  }
+  res.classList.add('hay');
+  res.textContent = '⚠ ' + inc.total + (inc.total === 1 ? ' número faltante' : ' números faltantes');
+  body.innerHTML = inc.porTipo.map(function (t) {
+    const partes = t.rangos.map(function (r) { return r.desde === r.hasta ? 'falta ' + r.desde : 'faltan ' + r.desde + ' a ' + r.hasta; });
+    return '<div class="inc-fila">' + badgeTipo(t.tipo) + '<span class="inc-rangos">' + escaparHtml(partes.join(' · ')) +
+      (t.recortado ? ' · … (se muestran los primeros 50 rangos)' : '') + '</span>' +
+      '<span class="inc-nota">' + t.faltantes + (t.faltantes === 1 ? ' faltante' : ' faltantes') + '</span></div>';
+  }).join('') +
+    '<div class="inc-nota">Desde el 1 hasta el número más alto cargado de cada tipo. Solo números 100 % numéricos; un anulado cuenta como existente.</div>';
 }
 
 function tiposDashboard() {
@@ -1931,6 +2183,16 @@ function renderCardsDashboard(d) {
       '<div class="stat-value">' + total + '</div>' +
       '<div class="stat-sub">' + u30 + ' en últimos 30 días</div></div>';
   }).join('');
+  // v6.1.0 — Pendientes · Vencidas: de la memoria si ya cargaron los datos (siempre al día), si no del dashboard
+  let nPend = null, nVenc = null;
+  if (estado.datosListos) {
+    nPend = estado.comunicaciones.filter(esPendiente).length;
+    nVenc = estado.comunicaciones.filter(esVencida).length;
+  } else if (typeof d.pendientes === 'number') { nPend = d.pendientes; nVenc = d.vencidas || 0; }
+  html += '<div class="stat-card pend" id="card-pendientes" title="Ver pendientes de respuesta" onclick="irAPendientes()">' +
+    '<div class="stat-label">Pendientes · Vencidas</div>' +
+    '<div class="stat-value">' + (nPend === null ? '—' : nPend + ' <small>· ' + nVenc + '</small>') + '</div>' +
+    '<div class="stat-sub">' + (nPend === null ? 'Tocá Recalcular' : nPend === 0 ? 'Sin respuestas pendientes' : 'de respuesta · vencidas') + '</div></div>';
   const nAviso = d.totalAviso || 0;
   html += '<div class="stat-card aviso"><div class="stat-label">Docs en Aviso</div><div class="stat-value">' + nAviso + '</div>' +
     '<div class="stat-sub">' + (nAviso === 0 ? 'Sin avisos activos' : 'registros en aviso') + '</div></div>';
@@ -2306,6 +2568,7 @@ function renderFiltrosTipo() {
     return '<button class="filtro-btn"' + estilo + ' title="' + escaparHtml(t.descripcion) + '" onclick="filtrarTipo(\'' + escaparHtml(t.tipo) + '\')">' + escaparHtml(t.tipo) + '</button>';
   }).join('');
   document.getElementById('filtros-tipo').innerHTML = html;
+  document.getElementById('filtro-pend').classList.toggle('activo-pend', !!estado.filtroPendientes);   // v6.1.0
 
   const hEl = document.getElementById('filtro-hashtag-activo');
   if (estado.filtroHashtag) {
@@ -2336,6 +2599,8 @@ function filaComunicacion(c) {
     '<td><span class="badge badge-' + claveEstado(c.estado) + ' badge-with-hist" data-accion="historial" title="' +
       (c.fechaHoraModif ? 'Ver historial de ediciones' : 'Sin ediciones — ver alta') + '">' + escaparHtml(c.estado || 'Activo') +
       (c.fechaHoraModif ? ' ' + ICO.history : '') + '</span></td>' +
+    // v6.1.0 — semáforo; data-order = urgencia (vencidas primero, después respondidas, al final las que no requieren)
+    '<td data-order="' + (semaforo(c) ? semaforo(c).orden : 999999) + '">' + htmlSemaforo(c) + '</td>' +
     '<td style="text-align:center">' + adj + '</td>' +
     '<td>' + accion + '</td></tr>';
 }
@@ -2349,7 +2614,7 @@ function renderComunicaciones() {
     pageLength: 15,
     lengthMenu: [[15, 30, 50, 100, -1], [15, 30, 50, 100, 'Todos']],   // fix: 15 no estaba en el menú default (V5 mostraba el selector vacío)
     order: [[2, 'desc'], [1, 'desc']],
-    columnDefs: [{ targets: [4, 5, 7, 8], orderable: false }],
+    columnDefs: [{ targets: [4, 5, 8, 9], orderable: false }],   // v6.1.0 — Plazo (7) sí se ordena
     dom: '<"dt-top"lf>rt<"dt-bot"ip>'
   });
   aplicarFiltrosTabla();
@@ -2360,6 +2625,22 @@ function aplicarFiltrosTabla() {
   estado.dtCom.column(0).search(estado.filtroTipo === 'todos' ? '' : '^' + $.fn.dataTable.util.escapeRegex(estado.filtroTipo) + '$', true, false);
   estado.dtCom.column(5).search(estado.filtroHashtag ? '(^|\\s)' + $.fn.dataTable.util.escapeRegex(estado.filtroHashtag) + '(\\s|$)' : '', true, false);
   estado.dtCom.draw();
+}
+// v6.1.0 — filtro "Pendientes de respuesta" (búsqueda propia de DataTables, solo para la tabla de comunicaciones)
+$.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+  if (settings.nTable.id !== 'tabla-com' || !estado.filtroPendientes) return true;
+  const tr = settings.aoData[dataIndex].nTr;
+  const c = tr ? comPorId(tr.dataset.id) : null;
+  return !!c && esPendiente(c);
+});
+function filtrarPendientes(on) { estado.filtroPendientes = !!on; renderFiltrosTipo(); aplicarFiltrosTabla(); }
+function irAPendientes() {
+  if (!estado.datosListos) { mostrarToast('Cargando datos… probá en un momento'); return; }
+  estado.filtroPendientes = true;
+  if (estado.seccion !== 'comunicaciones') showSection('comunicaciones');
+  else { renderFiltrosTipo(); aplicarFiltrosTabla(); }
+  // más urgentes primero
+  if (estado.dtCom) estado.dtCom.order([[7, 'asc']]).draw();
 }
 function filtrarTipo(tipo) { estado.filtroTipo = tipo; renderFiltrosTipo(); aplicarFiltrosTabla(); }
 function filtrarHashtag(tag) { estado.filtroHashtag = tag; renderFiltrosTipo(); aplicarFiltrosTabla(); }
@@ -2381,14 +2662,24 @@ document.getElementById('tbody-com').addEventListener('click', function (e) {
 });
 
 /** Actualiza (o agrega) una comunicación en memoria y redibuja la tabla si está montada. */
-function upsertComunicacion(c) {
-  const i = estado.comunicaciones.findIndex(function (x) { return x.id === c.id; });
-  if (i >= 0) estado.comunicaciones[i] = c; else estado.comunicaciones.push(c);
+function upsertComunicacion(c) { upsertComunicaciones([c]); }
+/** v6.1.0 — varias de una vez (alta + destinos que pasaron a Respondida): un solo redibujo. */
+function upsertComunicaciones(lista) {
+  let hayNueva = false;
+  (lista || []).forEach(function (c) {
+    if (!c) return;
+    const i = estado.comunicaciones.findIndex(function (x) { return x.id === c.id; });
+    if (i >= 0) estado.comunicaciones[i] = c; else { estado.comunicaciones.push(c); hayNueva = true; }
+  });
   if (estado.seccion === 'comunicaciones') {
     const pagina = estado.dtCom ? estado.dtCom.page() : 0;
+    const orden = estado.dtCom ? estado.dtCom.order() : null;
     renderComunicaciones();
-    if (i >= 0 && estado.dtCom) estado.dtCom.page(pagina).draw(false);
+    if (estado.dtCom && orden) estado.dtCom.order(orden);
+    if (!hayNueva && estado.dtCom) estado.dtCom.page(pagina).draw(false);
+    else if (estado.dtCom) estado.dtCom.draw();
   }
+  if (estado.seccion === 'inicio' && estado.dashboard) renderCardsDashboard(estado.dashboard);
 }
 
 // ── Export Excel (filtros actuales, datos limpios desde memoria) ──
@@ -2402,14 +2693,19 @@ async function exportarExcel() {
   spinner(true, 'Preparando Excel…');
   try {
     if (typeof XLSX === 'undefined') await cargarScript(CDN.xlsx);
-    const headers = ['Tipo', 'N°', 'Fecha', 'Asunto', 'Resumen', 'Etiquetas', 'Hashtags', 'Estado', 'Observación', 'Adjunto', 'Link adjunto', 'Cargado por', 'Fecha de carga'];
+    const headers = ['Tipo', 'N°', 'Fecha', 'Asunto', 'Resumen', 'Etiquetas', 'Hashtags', 'Estado', 'Observación', 'Adjunto', 'Link adjunto', 'Cargado por', 'Fecha de carga',
+      'Requiere respuesta', 'Vence', 'Estado respuesta', 'Plazo', 'Responde a', 'Referencias'];   // v6.1.0
+    const listaDocs = function (arr) { return arr.map(function (x) { return descDoc(comPorId(x.otro)); }).join(', '); };
     const data = filas.map(function (c) {
-      return [c.tipo, c.numero, fmtFecha(c.fecha), c.asunto, c.resumen, c.etiquetas, c.hashtags, c.estado, c.observacion, c.adjuntoNombre, c.adjuntoUrl, c.usuarioCarga, fmtFechaHora(c.fechaHoraCarga)];
+      const vs = vinculosDe(c.id);
+      return [c.tipo, c.numero, fmtFecha(c.fecha), c.asunto, c.resumen, c.etiquetas, c.hashtags, c.estado, c.observacion, c.adjuntoNombre, c.adjuntoUrl, c.usuarioCarga, fmtFechaHora(c.fechaHoraCarga),
+        c.requiereRespuesta ? 'Sí' : 'No', c.fechaVencimiento ? fmtFecha(c.fechaVencimiento) : '', c.estadoRespuesta || '', textoPlazo(c),
+        listaDocs(vs.respondeA), listaDocs(vs.referencias)];
     });
     const ahora = new Date();
     const ts = ahora.getFullYear() + _p2(ahora.getMonth() + 1) + _p2(ahora.getDate()) + '_' + _p2(ahora.getHours()) + _p2(ahora.getMinutes()) + _p2(ahora.getSeconds());
     const ws = XLSX.utils.aoa_to_sheet([headers].concat(data));
-    ws['!cols'] = [6, 8, 11, 40, 40, 28, 22, 10, 30, 30, 40, 26, 17].map(function (w) { return { wch: w }; });
+    ws['!cols'] = [6, 8, 11, 40, 40, 28, 22, 10, 30, 30, 40, 26, 17, 10, 11, 14, 9, 30, 30].map(function (w) { return { wch: w }; });
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Comunicaciones');
     XLSX.writeFile(wb, estado.obra.codigoObra + '_Comunicaciones_' + ts + '.xlsx');
@@ -2470,6 +2766,116 @@ function sugerirHashtags(prefijo) {
 }
 
 // ══════════════════════════════════════════════
+// v6.1.0 — SELECTOR DE DOCUMENTOS (alta: Responde a / Referencias · + Vincular)
+// ══════════════════════════════════════════════
+// Varios documentos por selector. Cada elegido lleva su IdVinculo desde que
+// se elige: un reintento del mismo guardado manda los mismos Ids (idempotente).
+// modo 'resp': sin escribir sugiere los pendientes por urgencia; escribiendo,
+// los pendientes van primero. modo 'ref': cualquier documento, recientes primero.
+function _normTxt(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+function _tokens(q) { return _normTxt(q).match(/[a-z]+|\d+|[^\sa-z\d]+/g) || []; }
+function _coincide(c, tokens) {
+  const num = String(c.numero || '');
+  const hay = _normTxt(c.tipo + ' ' + num + ' ' + (/^\d+$/.test(num) ? String(parseInt(num, 10)) : '') + ' ' + c.asunto);
+  return tokens.every(function (t) { return hay.indexOf(t) !== -1; });
+}
+function _ordenUrgencia(c) { const s = esPendiente(c) ? semaforo(c) : null; return s ? s.orden : 1e7; }
+
+function crearPicker(contId, opciones) {
+  const cont = document.getElementById(contId);
+  cont.innerHTML = '<div class="vinc-chips"></div>' +
+    '<input type="text" class="form-control vinc-input" autocomplete="off" placeholder="Buscar por tipo y número (NP 3) o por asunto…">' +
+    '<div class="vinc-sug"></div>';
+  const chips = cont.querySelector('.vinc-chips'), input = cont.querySelector('.vinc-input'), sug = cont.querySelector('.vinc-sug');
+  const p = { modo: opciones.modo, excluir: {}, items: [], resultados: [], activo: 0, abierto: false };
+
+  p.reset = function (modo, excluirIds) {
+    p.modo = modo || p.modo; p.items = []; p.excluir = {};
+    (excluirIds || []).forEach(function (id) { p.excluir[id] = true; });
+    input.value = ''; p.cerrar(); p.pintarChips();
+  };
+  p.valores = function () { return p.items.map(function (x) { return { idVinculo: x.idVinculo, idDestino: x.id }; }); };
+  p.pintarChips = function () {
+    chips.innerHTML = p.items.map(function (x, i) {
+      return '<span class="vinc-chip" title="' + escaparHtml(x.asunto) + '">' + escaparHtml(x.desc) + '<button type="button" data-quitar="' + i + '" title="Quitar">×</button></span>';
+    }).join('');
+  };
+  p.candidatos = function () {
+    const q = input.value.trim(), tokens = _tokens(q);
+    const elegidos = {};
+    p.items.forEach(function (x) { elegidos[x.id] = true; });
+    let lista = estado.comunicaciones.filter(function (c) { return c.estado !== 'Anulado' && !p.excluir[c.id] && !elegidos[c.id]; });
+    if (!tokens.length) {
+      if (p.modo === 'resp') { lista = lista.filter(esPendiente); }
+      else lista = lista.slice().sort(function (a, b) { return a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0; }).slice(0, 8);
+    } else lista = lista.filter(function (c) { return _coincide(c, tokens); });
+    if (p.modo === 'resp') {
+      lista = lista.slice().sort(function (a, b) {
+        return (_ordenUrgencia(a) - _ordenUrgencia(b)) || (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0);
+      });
+    } else if (tokens.length) lista = lista.slice().sort(function (a, b) { return a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0; });
+    return { lista: lista.slice(0, 12), vacioSinTexto: !tokens.length };
+  };
+  p.abrir = function () {
+    const r = p.candidatos();
+    p.resultados = r.lista; p.activo = 0; p.abierto = true;
+    if (!r.lista.length) {
+      sug.innerHTML = '<div class="vinc-vacio">' + (r.vacioSinTexto
+        ? (p.modo === 'resp' ? 'No hay documentos pendientes de respuesta. Escribí para buscar cualquier documento.' : 'Escribí para buscar.')
+        : 'Sin resultados.') + '</div>';
+      return;
+    }
+    const titulo = r.vacioSinTexto ? (p.modo === 'resp' ? 'Pendientes de respuesta' : 'Recientes') : '';
+    sug.innerHTML = (titulo ? '<div class="vinc-sug-tit">' + titulo + '</div>' : '') + r.lista.map(function (c, i) {
+      return '<div class="vinc-item' + (i === 0 ? ' activo' : '') + '" data-i="' + i + '">' + badgeTipo(c.tipo) +
+        '<span class="vinc-num">' + escaparHtml(c.numero) + '</span>' +
+        '<span class="vinc-asunto" title="' + escaparHtml(c.asunto) + '">' + escaparHtml(c.asunto) + ' <span class="vinc-fecha">· ' + fmtFecha(c.fecha) + '</span></span>' +
+        htmlSemaforo(c) + '</div>';
+    }).join('');
+  };
+  p.cerrar = function () { p.abierto = false; sug.innerHTML = ''; };
+  p.elegir = function (i) {
+    const c = p.resultados[i];
+    if (!c) return;
+    p.items.push({ id: c.id, idVinculo: uuid(), desc: descDoc(c), asunto: c.asunto });
+    input.value = ''; p.pintarChips(); p.abrir(); input.focus();
+  };
+  p.marcar = function (i) {
+    p.activo = Math.max(0, Math.min(i, p.resultados.length - 1));
+    sug.querySelectorAll('.vinc-item').forEach(function (el, k) { el.classList.toggle('activo', k === p.activo); });
+  };
+
+  input.addEventListener('focus', p.abrir);
+  input.addEventListener('input', p.abrir);
+  input.addEventListener('blur', function () { setTimeout(function () { if (document.activeElement !== input) p.cerrar(); }, 150); });
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); p.marcar(p.activo + 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); p.marcar(p.activo - 1); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (p.abierto && p.resultados.length) p.elegir(p.activo); }
+    else if (e.key === 'Escape') { if (p.abierto) { e.stopPropagation(); p.cerrar(); } }
+    else if (e.key === 'Backspace' && !input.value && p.items.length) { p.items.pop(); p.pintarChips(); p.abrir(); }
+  });
+  sug.addEventListener('mousedown', function (e) {
+    const it = e.target.closest('.vinc-item');
+    if (!it) return;
+    e.preventDefault();   // que el input no pierda el foco
+    p.elegir(Number(it.dataset.i));
+  });
+  chips.addEventListener('click', function (e) {
+    const b = e.target.closest('[data-quitar]');
+    if (!b) return;
+    p.items.splice(Number(b.dataset.quitar), 1);
+    p.pintarChips();
+    if (p.abierto) p.abrir();
+  });
+  return p;
+}
+function picker(nombre, contId, modo) {
+  if (!estado.pickers[nombre]) estado.pickers[nombre] = crearPicker(contId, { modo: modo });
+  return estado.pickers[nombre];
+}
+
+// ══════════════════════════════════════════════
 // ALTA DE COMUNICACIÓN (1 llamada, idempotente)
 // ══════════════════════════════════════════════
 function abrirModalCarga() {
@@ -2485,6 +2891,8 @@ function abrirModalCarga() {
   fecha.value = hoy; fecha.max = hoy;
   renderChipsEtiquetas('carga-etiquetas', [], false);
   sugerirHashtags('carga');
+  picker('cargaResp', 'carga-resp', 'resp').reset('resp', []);   // v6.1.0
+  picker('cargaRef', 'carga-ref', 'ref').reset('ref', []);
   limpiarArchivo();
   validarNumeroEnVivo();
   estado.altaId = uuid();   // mismo Id mientras el modal siga abierto (reintento manual tras un corte = idempotente)
@@ -2561,6 +2969,10 @@ async function guardarCarga() {
   if (faltan.length) { mostrarAviso('Completá los campos obligatorios: ' + faltan.join(', ') + '.'); return; }
   if (fecha > hoyISO()) { mostrarAviso('La fecha del documento no puede ser futura.'); return; }
 
+  // v6.1.0 — vínculos del alta (este documento es el origen)
+  const vinculos = picker('cargaResp', 'carga-resp', 'resp').valores().map(function (v) { return Object.assign(v, { tipo: VINC_RESPONDE }); })
+    .concat(picker('cargaRef', 'carga-ref', 'ref').valores().map(function (v) { return Object.assign(v, { tipo: VINC_REFERENCIA }); }));
+
   const btn = document.getElementById('btn-guardar-carga');
   btn.disabled = true;
   spinner(true, 'Subiendo adjunto y guardando…');
@@ -2571,13 +2983,17 @@ async function guardarCarga() {
       etiquetas: etiquetasElegidas('carga-etiquetas'),
       hashtags: normalizarHashtags(document.getElementById('carga-hashtags').value),
       observacion: document.getElementById('carga-obs').value.trim(),
-      archivo: { nombre: file.name, mimeType: file.type || 'application/octet-stream', base64: base64 }
+      archivo: { nombre: file.name, mimeType: file.type || 'application/octet-stream', base64: base64 },
+      vinculos: vinculos
     });
-    upsertComunicacion(r.comunicacion);
+    upsertVinculos(r.vinculos);
+    upsertComunicaciones([r.comunicacion].concat(r.actualizadas || []));
     cerrarModal('modal-carga');
     estado.altaId = null;
     limpiarArchivo();
-    mostrarToast('✓ ' + r.comunicacion.tipo + ' ' + r.comunicacion.numero + ' registrada');
+    const nResp = (r.actualizadas || []).length;
+    mostrarToast('✓ ' + r.comunicacion.tipo + ' ' + r.comunicacion.numero + ' registrada' +
+      (nResp ? ' · ' + nResp + (nResp === 1 ? ' respondida' : ' respondidas') : ''));
     recalcularDashboardFondo('accion');
   } catch (err) {
     const dup = err.respuesta && err.respuesta.motivo === 'duplicado';
@@ -2616,7 +3032,165 @@ function abrirModalEditar(id) {
   document.getElementById('edit-footer').innerHTML = soloLectura
     ? '<button class="btn btn-secondary" onclick="cerrarModal(\'modal-editar\')">Cerrar</button>'
     : '<button class="btn btn-secondary" onclick="cerrarModal(\'modal-editar\')">Cancelar</button><button class="btn btn-primary" onclick="guardarEdicion()" id="btn-guardar-edicion">Guardar cambios</button>';
+  // v6.1.0 — plazo + Hilo
+  pintarPlazoEdit(c);
+  document.getElementById('btn-vincular').classList.toggle('hidden', soloLectura);
+  renderHilo(id);
+  estado.editSnapshot = snapshotEdit();
   abrirModal('modal-editar');
+  document.querySelector('#modal-editar .modal-body').scrollTop = 0;
+}
+
+// ══════════════════════════════════════════════
+// v6.1.0 — PLAZO, HILO Y VINCULAR (dentro de Ver/Editar)
+// ══════════════════════════════════════════════
+function pintarPlazoEdit(c) {
+  const el = document.getElementById('edit-plazo');
+  if (!c.requiereRespuesta) { el.innerHTML = '<span style="color:var(--muted)">No requiere respuesta</span>'; return; }
+  const partes = [];
+  if (c.fechaVencimiento) partes.push('vence ' + fmtFecha(c.fechaVencimiento) + (c.plazoDias !== '' ? ' (' + c.plazoDias + ' días)' : ''));
+  partes.push(c.estadoRespuesta || 'Pendiente');
+  el.innerHTML = (c.estado === 'Anulado' ? '' : htmlSemaforo(c) + ' &nbsp;') + '<span style="color:var(--muted)">' + escaparHtml(partes.join(' · ')) + '</span>';
+}
+function snapshotEdit() {
+  if (!estado.puedeEditar) return '';
+  return JSON.stringify([document.getElementById('edit-estado').value, document.getElementById('edit-obs').value,
+    normalizarHashtags(document.getElementById('edit-hashtags').value), etiquetasElegidas('edit-etiquetas')]);
+}
+function hayCambiosSinGuardar() { return estado.puedeEditar && document.getElementById('modal-editar').classList.contains('open') && snapshotEdit() !== estado.editSnapshot; }
+
+function renderHilo(id) {
+  const cont = document.getElementById('edit-hilo');
+  const vs = vinculosDe(id);
+  const grupos = [
+    ['Responde a', vs.respondeA], ['Respondido por', vs.respondidoPor],
+    ['Referencias', vs.referencias], ['Citado en', vs.citadoEn]
+  ].filter(function (g) { return g[1].length; });
+  if (!grupos.length) {
+    cont.innerHTML = '<div class="hilo-vacio">Sin vínculos.' + (estado.puedeEditar ? ' Usá "+ Vincular" para agregar.' : '') + '</div>';
+    return;
+  }
+  cont.innerHTML = grupos.map(function (g) {
+    return '<div class="hilo-grupo-tit">' + g[0] + '</div>' + g[1].map(function (x) {
+      const c = comPorId(x.otro);
+      if (!c) return '<div class="hilo-item"><span></span><span class="vinc-num">—</span><span class="vinc-asunto">(documento no encontrado)</span><span></span><span></span></div>';
+      return '<div class="hilo-item' + (c.estado === 'Anulado' ? ' anulado' : '') + '" data-ir="' + escaparHtml(c.id) + '" title="Abrir ' + escaparHtml(descDoc(c)) + '">' +
+        badgeTipo(c.tipo) + '<span class="vinc-num">' + escaparHtml(c.numero) + '</span>' +
+        '<span class="vinc-asunto">' + escaparHtml(c.asunto) + ' <span class="vinc-fecha">· ' + fmtFecha(c.fecha) + (c.estado === 'Anulado' ? ' · anulado' : '') + '</span></span>' +
+        htmlSemaforo(c) +
+        (estado.puedeEditar ? '<button type="button" class="hilo-baja" data-baja="' + escaparHtml(x.v.idVinculo) + '" title="Dar de baja el vínculo">×</button>' : '<span></span>') +
+        '</div>';
+    }).join('');
+  }).join('');
+}
+document.getElementById('edit-hilo').addEventListener('click', async function (e) {
+  const baja = e.target.closest('[data-baja]');
+  if (baja) { e.stopPropagation(); confirmarBajaVinculo(baja.dataset.baja); return; }
+  const item = e.target.closest('[data-ir]');
+  if (!item) return;
+  if (hayCambiosSinGuardar()) {
+    const ok = await mostrarConfirm('Cambios sin guardar', 'Hay cambios sin guardar en este documento. Si abrís el otro, se pierden.', { textoAceptar: 'Abrir igual' });
+    if (!ok) return;
+  }
+  abrirModalEditar(item.dataset.ir);
+});
+
+/** Después de crear/dar de baja vínculos: memoria + Hilo + plazo + tabla + dashboard en segundo plano. */
+function aplicarCambioVinculos(actualizadas) {
+  upsertComunicaciones(actualizadas || []);
+  if (document.getElementById('modal-editar').classList.contains('open') && estado.editId) {
+    const c = comPorId(estado.editId);
+    if (c) {
+      pintarPlazoEdit(c);
+      document.getElementById('edit-meta').textContent = 'Cargado por ' + (c.usuarioCarga || '—') + ' el ' + fmtFechaHora(c.fechaHoraCarga) +
+        (c.fechaHoraModif ? ' · última edición ' + fmtFechaHora(c.fechaHoraModif) + ' (' + c.usuarioModif + ')' : '');
+    }
+    renderHilo(estado.editId);
+  }
+  recalcularDashboardFondo('accion');
+}
+
+async function confirmarBajaVinculo(idVinculo) {
+  const v = estado.vinculos.find(function (x) { return x.idVinculo === idVinculo; });
+  if (!v) return;
+  const o = comPorId(v.idOrigen), d = comPorId(v.idDestino);
+  const extra = v.tipo === VINC_RESPONDE && d && d.requiereRespuesta
+    ? '\n\nSi ' + descDoc(d) + ' no tiene otra respuesta, vuelve a Pendiente.' : '';
+  const ok = await mostrarConfirm('Dar de baja vínculo', descDoc(o) + ' — ' + v.tipo.toLowerCase() + ' → ' + descDoc(d) + extra, { textoAceptar: 'Dar de baja', danger: true });
+  if (!ok) return;
+  spinner(true, 'Dando de baja el vínculo…');
+  try {
+    const r = await api('bajaVinculo', { idVinculo: idVinculo });
+    upsertVinculos([Object.assign({}, v, { estado: 'Inactivo' })]);
+    aplicarCambioVinculos(r.actualizadas);
+    mostrarToast('✓ Vínculo dado de baja' + ((r.actualizadas || []).length ? ' · ' + descDoc(r.actualizadas[0]) + ' vuelve a Pendiente' : ''));
+  } catch (err) {
+    mostrarAviso('No se pudo dar de baja el vínculo: ' + err.message);
+  } finally { spinner(false); }
+}
+
+function abrirModalVincular() {
+  const c = comPorId(estado.editId);
+  if (!c || !estado.puedeEditar) return;
+  document.getElementById('vinc-titulo').textContent = 'Vincular ' + descDoc(c);
+  document.getElementById('vinc-tipo').value = VINC_RESPONDE;
+  cambiarTipoVincular();
+  document.getElementById('btn-guardar-vinc').disabled = false;
+  abrirModal('modal-vincular');
+  setTimeout(function () { document.querySelector('#vinc-picker .vinc-input').focus(); }, 60);
+}
+/** Excluye el propio documento y los que ya tienen ese mismo vínculo desde este origen. */
+function cambiarTipoVincular() {
+  const tipo = document.getElementById('vinc-tipo').value;
+  const c = comPorId(estado.editId);
+  const vs = vinculosDe(estado.editId);
+  const ya = (tipo === VINC_RESPONDE ? vs.respondeA : vs.referencias).map(function (x) { return x.otro; });
+  picker('vincular', 'vinc-picker', 'resp').reset(tipo === VINC_RESPONDE ? 'resp' : 'ref', [estado.editId].concat(ya));
+  document.getElementById('vinc-ayuda').textContent = tipo === VINC_RESPONDE
+    ? descDoc(c) + ' responde a los documentos que elijas: los que requieren respuesta pasan a Respondida.'
+    : descDoc(c) + ' cita a los documentos que elijas ("como se indica en…"). No cambia ningún estado.';
+}
+async function guardarVincular() {
+  const tipo = document.getElementById('vinc-tipo').value;
+  const p = picker('vincular', 'vinc-picker', 'resp');
+  const elegidos = p.valores();
+  if (!elegidos.length) { mostrarAviso('Elegí al menos un documento.'); return; }
+  const idOrigen = estado.editId;
+  const btn = document.getElementById('btn-guardar-vinc');
+  btn.disabled = true;
+  spinner(true, 'Vinculando…');
+  const actualizadas = [], errores = [];
+  let creados = 0;
+  try {
+    // uno por uno, en secuencia (cada uno idempotente por su IdVinculo)
+    for (let i = 0; i < elegidos.length; i++) {
+      const e = elegidos[i];
+      try {
+        const r = await api('crearVinculo', { idVinculo: e.idVinculo, idOrigen: idOrigen, idDestino: e.idDestino, tipo: tipo });
+        upsertVinculos([r.vinculo]);
+        (r.actualizadas || []).forEach(function (c) { actualizadas.push(c); });
+        creados++;
+      } catch (err) {
+        errores.push(descDoc(comPorId(e.idDestino)) + ': ' + err.message);
+      }
+    }
+  } finally {
+    spinner(false);
+    btn.disabled = false;
+  }
+  if (creados) aplicarCambioVinculos(actualizadas);
+  if (!errores.length) {
+    cerrarModal('modal-vincular');
+    mostrarToast('✓ ' + creados + (creados === 1 ? ' vínculo creado' : ' vínculos creados') +
+      (actualizadas.length ? ' · ' + actualizadas.length + (actualizadas.length === 1 ? ' respondida' : ' respondidas') : ''));
+  } else {
+    // quedan en el selector solo los que fallaron (con el mismo IdVinculo → reintentar no duplica)
+    const fallaron = {};
+    elegidos.forEach(function (e) { if (!estado.vinculos.some(function (v) { return v.idVinculo === e.idVinculo; })) fallaron[e.idVinculo] = true; });
+    p.items = p.items.filter(function (x) { return fallaron[x.idVinculo]; });
+    p.pintarChips();
+    mostrarAviso((creados ? 'Se crearon ' + creados + '. ' : '') + 'No se pudieron crear:\n' + errores.join('\n'));
+  }
 }
 
 async function guardarEdicion() {
@@ -2659,6 +3233,7 @@ function claveHist_(c) { return c.id + '|' + (c.fechaHoraModif || ''); }
 function itemActualHist_(c) {
   return {
     estado: c.estado || 'Activo', observacion: c.observacion, hashtags: c.hashtags,
+    requiereRespuesta: c.requiereRespuesta, estadoRespuesta: c.estadoRespuesta,   // v6.1.0
     fechaHora: c.fechaHoraModif || c.fechaHoraCarga, usuario: c.usuarioModif || c.usuarioCarga, esActual: true
   };
 }
@@ -2674,6 +3249,7 @@ function htmlItemsHist_(items, previo) {
       '<div class="tl-estado">' + escaparHtml(est) + '</div>' +
       (h.observacion ? '<div class="tl-obs">' + escaparHtml(h.observacion) + '</div>' : '') +
       (h.hashtags ? '<div class="tl-obs">' + escaparHtml(h.hashtags) + '</div>' : '') +
+      (h.requiereRespuesta && h.estadoRespuesta ? '<div class="tl-obs" style="font-style:normal">Respuesta: ' + escaparHtml(h.estadoRespuesta) + '</div>' : '') +   // v6.1.0
       '<div class="tl-usr">por ' + escaparHtml(h.usuario || '—') + '</div></div></div>';
   }).join('');
 }
