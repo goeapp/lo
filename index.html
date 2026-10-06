@@ -3,11 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra v6.1.1</title>
+<title>LibroObra v6.1.2</title>
 <!--
-  index_libroobra_v6_1_1.html — LibroObra v6.1.1 (06-oct-2026)
-  Backend: gas_libroobra_v6_1_1.gs (misma API_URL: publicar como Nueva versión
+  index_libroobra_v6_1_2.html — LibroObra v6.1.2 (06-oct-2026)
+  Backend: gas_libroobra_v6_1_2.gs (misma API_URL: publicar como Nueva versión
   de la implementación actual).
+
+  QUÉ CAMBIÓ EN v6.1.2 (respecto a v6.1.1) — diseño cerrado el 06-oct:
+   - Comunicaciones: columna Resumen (angosta, "…", completo al pasar el
+     mouse) que entra en la búsqueda de DataTables.
+   - Pestaña nueva "Buscar": busca en el texto de los PDF + Asunto +
+     Resumen + Observación (en el backend). Tarjeta por documento con hasta
+     3 fragmentos resaltados y su origen ("PDF · pág. 3", "Resumen"…),
+     filtro de Tipo, "Palabra completa" y "Palabras sueltas" (de BDC),
+     anulados al final tachados, botones Abrir PDF / Ver documento.
+   - Texto de los PDF: apenas termina el alta, el PDF se manda a leer en
+     segundo plano (panel de tareas). Ver/Editar muestra el estado del
+     texto y, para el admin, "Leer ahora".
+   - Dashboard: el panel pasa a "Inconsistencias" y suma "PDF sin indexar".
+
+  (historia anterior)
+  index_libroobra_v6_1_1.html — LibroObra v6.1.1 (06-oct-2026)
 
   QUÉ CAMBIÓ EN v6.1.1 (respecto a v6.1.0) — anotado en el cierre del 05-oct:
    - Requiere respuesta por documento (§2.1, opción C):
@@ -763,6 +779,46 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 .dialogo-caja.ancho { max-width: 440px; }
 .dialogo-botones.columna { flex-direction: column; }
 
+/* ══════════════════════════════════════════════
+   v6.1.2 — RESUMEN EN LA TABLA, BUSCAR, TEXTO DEL PDF
+══════════════════════════════════════════════ */
+.celda-resumen { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: .8rem; }
+.busq-card { margin-bottom: 14px; }
+.busq-barra { display: flex; gap: 8px; margin-bottom: 12px; }
+.busq-barra .form-control { font-size: .95rem; padding: 10px 12px; }
+.busq-filtros { margin-bottom: 6px; }
+.busq-ayuda { font-size: .72rem; color: var(--muted); }
+.busq-nota { font-size: .75rem; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-sm); padding: 6px 10px; margin-top: 10px; }
+.busq-estado { font-size: .78rem; color: var(--muted); margin: 0 2px 10px; display: flex; align-items: center; gap: 8px; min-height: 18px; }
+.busq-estado.error { color: var(--danger); font-weight: 600; }
+#busq-resultados { display: flex; flex-direction: column; gap: 10px; }
+.busq-res { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 16px; animation: fadeIn .2s ease; }
+.busq-res.anulado { opacity: .6; }
+.busq-res.anulado .busq-asunto, .busq-res.anulado .vinc-num { text-decoration: line-through; }
+.busq-res-cab { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.busq-asunto { font-weight: 600; color: var(--accent2); cursor: pointer; min-width: 0; }
+.busq-asunto:hover { text-decoration: underline; }
+.busq-frag { display: flex; gap: 10px; align-items: baseline; font-size: .82rem; padding: 3px 0; }
+.busq-origen { flex-shrink: 0; font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 99px; padding: 1px 8px; min-width: 88px; text-align: center; }
+.busq-origen.pdf { color: #1e40af; background: #eff6ff; border-color: #bfdbfe; }
+.busq-txt { color: var(--text); word-break: break-word; min-width: 0; }
+.busq-txt mark { background: #fde68a; color: inherit; padding: 0 1px; border-radius: 2px; }
+.busq-pie { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.busq-mas { font-size: .72rem; color: var(--muted); font-style: italic; }
+.busq-acc { display: flex; gap: 6px; margin-left: auto; }
+.busq-vacio { text-align: center; color: var(--muted); padding: 30px; font-size: .85rem; }
+@media (max-width: 640px) { .busq-frag { flex-direction: column; gap: 2px; } .busq-origen { min-width: 0; } }
+
+.inc-sub { font-size: .64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-top: 4px; }
+.inc-textos { display: flex; flex-wrap: wrap; gap: 6px; }
+.inc-doc { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 99px; padding: 2px 10px 2px 3px; font-size: .76rem; cursor: pointer; background: var(--surface); }
+.inc-doc:hover { border-color: var(--accent2); }
+.inc-doc.error { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
+
+.texto-linea { display: flex; align-items: center; justify-content: space-between; gap: 10px; white-space: normal; }
+.texto-linea.ok { color: #166534; }
+.texto-linea.error { color: #991b1b; }
+
 /* Historial: cambios anteriores cargando (v6.0.2) */
 .tl-cargando { display: flex; align-items: center; gap: 8px; font-size: .75rem; color: var(--muted); padding: 2px 0 14px 6px; }
 .tl-cargando .btn-mini-spin { flex-shrink: 0; }
@@ -785,7 +841,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   <div class="caja">
     <span class="caja-emoji">📋</span>
     <div class="caja-logo">LibroObra</div>
-    <div class="caja-version" id="version-login">v6.1.1</div>
+    <div class="caja-version" id="version-login">v6.1.2</div>
     <div class="caja-sub">Registro de comunicaciones de obra</div>
 
     <div id="paso-email" class="login-paso activo">
@@ -840,6 +896,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <nav class="hdr-nav">
       <button class="hdr-nav-btn active" id="nav-inicio" onclick="showSection('inicio')" disabled>Inicio</button>
       <button class="hdr-nav-btn" id="nav-comunicaciones" onclick="showSection('comunicaciones')" disabled>Comunicaciones</button>
+      <button class="hdr-nav-btn" id="nav-buscar" onclick="showSection('buscar')" disabled>Buscar</button>
       <button class="hdr-nav-btn" id="nav-hitos" onclick="showSection('hitos')" disabled>Hitos</button>
       <a class="hdr-nav-guia" href="./instructivo_libroobra.html" target="_blank" rel="noopener">Guía ↗</a>
     </nav>
@@ -849,7 +906,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <button class="hdr-btn" id="btn-cambiar-obra" onclick="cambiarObra()">Cambiar obra</button>
     <button class="hdr-btn hdr-btn-instalar hidden" id="btn-instalar">Instalar</button>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version" id="version-app">v6.1.1</span>
+    <span class="hdr-version" id="version-app">v6.1.2</span>
     <button class="hdr-btn" onclick="confirmarCerrarSesion()">Salir</button>
   </header>
 
@@ -938,7 +995,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
       <div class="card" id="card-inc">
         <div class="inc-header" onclick="toggleInc()">
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-            <div class="card-title" style="margin-bottom:0">Inconsistencias de numeración</div>
+            <div class="card-title" style="margin-bottom:0">Inconsistencias</div>
             <span class="inc-resumen" id="inc-resumen">—</span>
           </div>
           <span class="hi-panel-toggle collapsed" id="inc-toggle">▾</span>
@@ -966,10 +1023,35 @@ textarea.form-control { resize: vertical; min-height: 66px; }
       </div>
       <div class="dt-wrap">
         <table id="tabla-com" class="display" style="width:100%">
-          <thead><tr><th>Tipo</th><th>N°</th><th>Fecha</th><th>Asunto</th><th>Etiquetas</th><th>Hashtags</th><th>Estado</th><th>Plazo</th><th>Adj.</th><th></th></tr></thead>
+          <thead><tr><th>Tipo</th><th>N°</th><th>Fecha</th><th>Asunto</th><th>Resumen</th><th>Etiquetas</th><th>Hashtags</th><th>Estado</th><th>Plazo</th><th>Adj.</th><th></th></tr></thead>
           <tbody id="tbody-com"></tbody>
         </table>
       </div>
+    </section>
+
+    <!-- ── BUSCAR (v6.1.2) ── -->
+    <section id="sec-buscar" class="section">
+      <div class="sec-header">
+        <div class="sec-title"><div class="sec-title-dot"></div>Buscar</div>
+      </div>
+      <div class="card busq-card">
+        <div class="busq-barra">
+          <input type="search" id="busq-input" class="form-control" maxlength="200" autocomplete="off"
+                 placeholder="Buscar en el texto de los PDF, el asunto, el resumen y la observación…">
+          <button class="btn btn-primary" id="btn-buscar" onclick="ejecutarBusqueda()">Buscar</button>
+        </div>
+        <div class="filtros-wrap busq-filtros">
+          <span class="filtro-label">Tipo:</span>
+          <span id="busq-tipos" style="display:contents"></span>
+          <span class="filtro-label" style="margin-left:8px">Modo:</span>
+          <button class="filtro-btn" id="busq-completa" onclick="toggleBusq('palabraCompleta')" title="Que «multa» no encuentre «simultaneidad»">Palabra completa</button>
+          <button class="filtro-btn" id="busq-sueltas" onclick="toggleBusq('palabrasSueltas')" title="Todas las palabras, en cualquier orden y en cualquier campo">Palabras sueltas</button>
+        </div>
+        <div class="busq-ayuda">Sin acentos ni mayúsculas: «certificacion» encuentra «Certificación». Sin «Palabras sueltas», varias palabras se buscan como frase.</div>
+        <div class="busq-nota hidden" id="busq-nota"></div>
+      </div>
+      <div class="busq-estado" id="busq-estado"></div>
+      <div id="busq-resultados"></div>
     </section>
 
     <!-- ── HITOS ── -->
@@ -1126,6 +1208,10 @@ textarea.form-control { resize: vertical; min-height: 66px; }
           <div class="form-row">
             <div class="form-group"><label class="form-label">Fecha del documento</label><div class="info-lectura" id="edit-fecha"></div></div>
             <div class="form-group"><label class="form-label">Adjunto</label><div class="info-lectura" id="edit-adjunto"></div></div>
+          </div>
+          <!-- v6.1.2 — estado del texto del PDF (+ "Leer ahora" para el admin) -->
+          <div class="form-row full">
+            <div class="form-group"><label class="form-label">Texto del adjunto</label><div class="info-lectura texto-linea" id="edit-texto"></div></div>
           </div>
           <div class="form-row full">
             <div class="form-group"><label class="form-label">Asunto</label><div class="info-lectura" id="edit-asunto"></div></div>
@@ -1303,7 +1389,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 // ══════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════
-const APP_VERSION = 'v6.1.1';
+const APP_VERSION = 'v6.1.2';
 const API_URL = 'https://script.google.com/macros/s/AKfycbxDN2F_K6z4wQXDJAyyZ6EdoSqoQgHv8d8f7gXGo-QYdke3DXW6hvZtEnmEy9xFpjTO/exec';
 const SESION_KEY = 'lo_sesion';
 const OBRA_KEY = 'lo_obra_actual';
@@ -1362,7 +1448,9 @@ const estado = {
   filtroPendientes: false,            // v6.1.0 — filtro "Pendientes de respuesta"
   editSnapshot: '',                   // v6.1.0 — campos del modal Editar al abrir (avisa cambios sin guardar al navegar el Hilo)
   pickers: {},                        // v6.1.0 — selectores de documentos (alta: resp/ref · vincular)
-  editReq: false                      // v6.1.1 — valor del interruptor "Requiere respuesta" en Ver/Editar (sin guardar)
+  editReq: false,                     // v6.1.1 — valor del interruptor "Requiere respuesta" en Ver/Editar (sin guardar)
+  busq: { tipo: 'todos', palabraCompleta: false, palabrasSueltas: false, termino: '', resultados: null,
+          total: 0, recortado: false, ms: 0, token: 0, cargando: false, error: '' }   // v6.1.2 — pestaña Buscar
 };
 
 // ══════════════════════════════════════════════
@@ -2035,6 +2123,11 @@ function resetDatosObra() {
   estado.puedeEditar = false; estado.perfil = '';
   estado.dashEsCopiaLocal = false; estado.dashFalloRecalc = false;
   estado.histCache = {};
+  // v6.1.2 — la búsqueda es de la obra anterior
+  estado.busq.token++; estado.busq.termino = ''; estado.busq.resultados = null; estado.busq.error = ''; estado.busq.cargando = false; estado.busq.tipo = 'todos';
+  document.getElementById('busq-input').value = '';
+  document.getElementById('busq-resultados').innerHTML = '';
+  document.getElementById('busq-estado').innerHTML = '';
   document.getElementById('btn-nueva-com').classList.add('hidden');
   document.getElementById('btn-nuevo-hito').classList.add('hidden');
 }
@@ -2066,7 +2159,7 @@ function pintarHeaderObra() {
 }
 
 function habilitarNav(on) {
-  ['nav-inicio', 'nav-comunicaciones', 'nav-hitos'].forEach(function (id) {
+  ['nav-inicio', 'nav-comunicaciones', 'nav-buscar', 'nav-hitos'].forEach(function (id) {
     const b = document.getElementById(id);
     b.disabled = !on;
     b.title = on ? '' : 'Cargando datos…';
@@ -2190,6 +2283,7 @@ function showSection(id, forzar) {
   if (id === 'inicio') renderDashboard();
   if (id === 'comunicaciones' && estado.datosListos) renderComunicaciones();
   if (id === 'hitos' && estado.datosListos) renderHitos();
+  if (id === 'buscar' && estado.datosListos) renderBuscar();   // v6.1.2
 }
 
 // ══════════════════════════════════════════════
@@ -2239,33 +2333,67 @@ function toggleInc() {
   document.getElementById('inc-body').classList.toggle('collapsed', !_incAbierto);
   document.getElementById('inc-toggle').classList.toggle('collapsed', !_incAbierto);
 }
+/** v6.1.2 — PDF sin indexar: de la memoria si ya cargaron los datos (siempre al día), si no del dashboard. */
+function textosSinIndexar() {
+  if (estado.datosListos) {
+    const lista = estado.comunicaciones
+      .filter(function (c) { return c.estado !== 'Anulado' && (c.estadoTexto === 'Pendiente' || c.estadoTexto === 'Error'); })
+      .map(function (c) { return { id: c.id, tipo: c.tipo, numero: c.numero, estadoTexto: c.estadoTexto, intentos: Number(c.intentosTexto) || 0 }; });
+    return { pendientes: lista.length, errores: lista.filter(function (x) { return x.estadoTexto === 'Error'; }).length, lista: lista };
+  }
+  return (estado.dashboard && estado.dashboard.textos) || null;
+}
 function renderInconsistencias(d) {
   const res = document.getElementById('inc-resumen');
   const body = document.getElementById('inc-body');
   res.className = 'inc-resumen';
   if (!d) { res.textContent = '—'; body.innerHTML = ''; return; }
   const inc = d.inconsistencias;
+  const tx = textosSinIndexar();
+  const avisos = [];
+  let html = '';
+  // 1) Numeración
+  html += '<div class="inc-sub">Numeración</div>';
   if (!inc) {   // dashboard calculado con una versión anterior al v6.1.0
-    res.textContent = 'Tocá Recalcular para verlas';
-    body.innerHTML = '<div class="inc-nota">El dashboard guardado es de una versión anterior. Se completa en el próximo recálculo.</div>';
-    return;
+    html += '<div class="inc-nota">El dashboard guardado es de una versión anterior. Se completa en el próximo recálculo.</div>';
+  } else if (!inc.total) {
+    html += '<div class="inc-nota">✓ Sin saltos. Se controlan los números 100 % numéricos de cada tipo, desde el 1. Un número anulado cuenta como existente.</div>';
+  } else {
+    avisos.push(inc.total + (inc.total === 1 ? ' número faltante' : ' números faltantes'));
+    html += inc.porTipo.map(function (t) {
+      const partes = t.rangos.map(function (r) { return r.desde === r.hasta ? 'falta ' + r.desde : 'faltan ' + r.desde + ' a ' + r.hasta; });
+      return '<div class="inc-fila">' + badgeTipo(t.tipo) + '<span class="inc-rangos">' + escaparHtml(partes.join(' · ')) +
+        (t.recortado ? ' · … (se muestran los primeros 50 rangos)' : '') + '</span>' +
+        '<span class="inc-nota">' + t.faltantes + (t.faltantes === 1 ? ' faltante' : ' faltantes') + '</span></div>';
+    }).join('') +
+      '<div class="inc-nota">Desde el 1 hasta el número más alto cargado de cada tipo. Solo números 100 % numéricos; un anulado cuenta como existente.</div>';
   }
-  if (!inc.total) {
-    res.classList.add('nada');
-    res.textContent = '✓ Sin saltos de numeración';
-    body.innerHTML = '<div class="inc-nota">Se controlan los números 100 % numéricos de cada tipo, desde el 1. Un número anulado cuenta como existente.</div>';
-    return;
+  // 2) v6.1.2 — PDF sin indexar
+  html += '<div class="inc-sub">Texto de los PDF</div>';
+  if (!tx) {
+    html += '<div class="inc-nota">Tocá Recalcular para verlo.</div>';
+  } else if (!tx.pendientes) {
+    html += '<div class="inc-nota">✓ Todos los PDF están leídos: su contenido entra en Buscar.</div>';
+  } else {
+    avisos.push(tx.pendientes + ' PDF sin indexar' + (tx.errores ? ' (' + tx.errores + ' con error)' : ''));
+    html += '<div class="inc-textos">' + (tx.lista || []).map(function (x) {
+      const det = x.estadoTexto === 'Error' ? 'error' : (x.intentos ? 'falló ' + x.intentos + (x.intentos === 1 ? ' vez' : ' veces') : 'pendiente');
+      return '<span class="inc-doc' + (x.estadoTexto === 'Error' ? ' error' : '') + '" data-ir="' + escaparHtml(x.id) + '" title="Abrir el documento">' +
+        badgeTipo(x.tipo) + '<b>' + escaparHtml(x.numero) + '</b> · ' + det + '</span>';
+    }).join('') + '</div>' +
+      '<div class="inc-nota">Su contenido todavía no entra en Buscar. Se leen solos (al cargarlos y a las 3 hs); "pendiente" que no avanza o "error": abrilo y tocá "Leer ahora".</div>';
   }
-  res.classList.add('hay');
-  res.textContent = '⚠ ' + inc.total + (inc.total === 1 ? ' número faltante' : ' números faltantes');
-  body.innerHTML = inc.porTipo.map(function (t) {
-    const partes = t.rangos.map(function (r) { return r.desde === r.hasta ? 'falta ' + r.desde : 'faltan ' + r.desde + ' a ' + r.hasta; });
-    return '<div class="inc-fila">' + badgeTipo(t.tipo) + '<span class="inc-rangos">' + escaparHtml(partes.join(' · ')) +
-      (t.recortado ? ' · … (se muestran los primeros 50 rangos)' : '') + '</span>' +
-      '<span class="inc-nota">' + t.faltantes + (t.faltantes === 1 ? ' faltante' : ' faltantes') + '</span></div>';
-  }).join('') +
-    '<div class="inc-nota">Desde el 1 hasta el número más alto cargado de cada tipo. Solo números 100 % numéricos; un anulado cuenta como existente.</div>';
+  if (!inc && !avisos.length) res.textContent = 'Tocá Recalcular para verlas';
+  else if (!avisos.length) { res.classList.add('nada'); res.textContent = '✓ Sin saltos de numeración · PDF al día'; }
+  else { res.classList.add('hay'); res.textContent = '⚠ ' + avisos.join(' · '); }
+  body.innerHTML = html;
 }
+document.getElementById('inc-body').addEventListener('click', function (e) {
+  const it = e.target.closest('[data-ir]');
+  if (!it) return;
+  if (!estado.datosListos) { mostrarToast('Cargando datos… probá en un momento'); return; }
+  abrirModalEditar(it.dataset.ir);
+});
 
 function tiposDashboard() {
   const d = estado.dashboard;
@@ -2699,7 +2827,9 @@ function filaComunicacion(c) {
     '<td>' + badgeTipo(c.tipo) + '</td>' +
     '<td class="celda-num">' + escaparHtml(c.numero) + '</td>' +
     '<td data-order="' + escaparHtml(c.fecha) + '">' + fmtFecha(c.fecha) + '</td>' +
-    '<td class="celda-asunto" title="' + escaparHtml(c.resumen) + '">' + escaparHtml(c.asunto) + '</td>' +
+    '<td class="celda-asunto" title="' + escaparHtml(c.asunto) + '">' + escaparHtml(c.asunto) + '</td>' +
+    // v6.1.2 — Resumen: angosto con "…"; el texto completo está en la celda (DataTables lo busca) y en el title
+    '<td><div class="celda-resumen" title="' + escaparHtml(c.resumen) + '">' + escaparHtml(c.resumen) + '</div></td>' +
     '<td>' + etiq + '</td>' +
     '<td>' + hash + '</td>' +
     // v6.0.2 — el reloj solo si hubo ediciones (FechaHoraModif ⇔ hay fotos en Historia)
@@ -2721,7 +2851,7 @@ function renderComunicaciones() {
     pageLength: 15,
     lengthMenu: [[15, 30, 50, 100, -1], [15, 30, 50, 100, 'Todos']],   // fix: 15 no estaba en el menú default (V5 mostraba el selector vacío)
     order: [[2, 'desc'], [1, 'desc']],
-    columnDefs: [{ targets: [4, 5, 8, 9], orderable: false }],   // v6.1.0 — Plazo (7) sí se ordena
+    columnDefs: [{ targets: [5, 6, 9, 10], orderable: false }],   // v6.1.2 — +Resumen (4, ordenable); Plazo (8) sí se ordena
     dom: '<"dt-top"lf>rt<"dt-bot"ip>'
   });
   aplicarFiltrosTabla();
@@ -2730,7 +2860,7 @@ function renderComunicaciones() {
 function aplicarFiltrosTabla() {
   if (!estado.dtCom) return;
   estado.dtCom.column(0).search(estado.filtroTipo === 'todos' ? '' : '^' + $.fn.dataTable.util.escapeRegex(estado.filtroTipo) + '$', true, false);
-  estado.dtCom.column(5).search(estado.filtroHashtag ? '(^|\\s)' + $.fn.dataTable.util.escapeRegex(estado.filtroHashtag) + '(\\s|$)' : '', true, false);
+  estado.dtCom.column(6).search(estado.filtroHashtag ? '(^|\\s)' + $.fn.dataTable.util.escapeRegex(estado.filtroHashtag) + '(\\s|$)' : '', true, false);
   estado.dtCom.draw();
 }
 // v6.1.0 — filtro "Pendientes de respuesta" (búsqueda propia de DataTables, solo para la tabla de comunicaciones)
@@ -2747,7 +2877,7 @@ function irAPendientes() {
   if (estado.seccion !== 'comunicaciones') showSection('comunicaciones');
   else { renderFiltrosTipo(); aplicarFiltrosTabla(); }
   // más urgentes primero
-  if (estado.dtCom) estado.dtCom.order([[7, 'asc']]).draw();
+  if (estado.dtCom) estado.dtCom.order([[8, 'asc']]).draw();   // v6.1.2 — Plazo pasó a la columna 8
 }
 function filtrarTipo(tipo) { estado.filtroTipo = tipo; renderFiltrosTipo(); aplicarFiltrosTabla(); }
 function filtrarHashtag(tag) { estado.filtroHashtag = tag; renderFiltrosTipo(); aplicarFiltrosTabla(); }
@@ -2786,7 +2916,8 @@ function upsertComunicaciones(lista) {
     if (!hayNueva && estado.dtCom) estado.dtCom.page(pagina).draw(false);
     else if (estado.dtCom) estado.dtCom.draw();
   }
-  if (estado.seccion === 'inicio' && estado.dashboard) renderCardsDashboard(estado.dashboard);
+  if (estado.seccion === 'inicio' && estado.dashboard) { renderCardsDashboard(estado.dashboard); renderInconsistencias(estado.dashboard); }
+  if (estado.seccion === 'buscar') pintarNotaBuscar();   // v6.1.2
 }
 
 // ── Export Excel (filtros actuales, datos limpios desde memoria) ──
@@ -3132,6 +3263,7 @@ async function guardarCarga() {
     mostrarToast('✓ ' + r.comunicacion.tipo + ' ' + r.comunicacion.numero + ' registrada' +
       (nResp ? ' · ' + nResp + (nResp === 1 ? ' respondida' : ' respondidas') : ''));
     recalcularDashboardFondo('accion');
+    if (r.comunicacion.estadoTexto === 'Pendiente') indexarEnFondo(r.comunicacion.id, false);   // v6.1.2 — el PDF se lee ya, en segundo plano
   } catch (err) {
     const dup = err.respuesta && err.respuesta.motivo === 'duplicado';
     mostrarAviso(dup ? err.message : 'No se pudo guardar: ' + err.message + (dup ? '' : '\n\nPodés volver a tocar Guardar: si el primer intento llegó a grabarse, no se duplica.'));
@@ -3173,6 +3305,7 @@ function abrirModalEditar(id) {
   estado.editReq = !!c.requiereRespuesta;
   pintarReqEdit(c);
   pintarPlazoEdit(c);
+  pintarTextoEdit(c);   // v6.1.2
   document.getElementById('btn-vincular').classList.toggle('hidden', soloLectura);
   renderHilo(id);
   estado.editSnapshot = snapshotEdit();
@@ -3528,6 +3661,186 @@ function _diffFechaHora(a, b) {
   const txtDias = dias + (dias === 1 ? ' día' : ' días');   // v6.0.2 — "1 día", no "1 días"
   return hRest > 0 ? txtDias + ' ' + hRest + ' hs' : txtDias;
 }
+
+// ══════════════════════════════════════════════
+// v6.1.2 — TEXTO DE LOS PDF (indexado en segundo plano + "Leer ahora")
+// ══════════════════════════════════════════════
+const _indexando = {};   // Id → true mientras se lee (evita doble pedido)
+function esPdfCom(c) { return !!c && /\.pdf$/i.test(String(c.adjuntoNombre || '')); }
+
+function infoTexto(c) {
+  const n = Number(c.intentosTexto) || 0;
+  switch (c.estadoTexto) {
+    case 'Indexado': return { cls: 'ok', txt: '✓ Leído: su contenido entra en Buscar.', leer: false };
+    case 'Pendiente': return { cls: '', txt: n ? 'Pendiente: falló ' + n + (n === 1 ? ' vez' : ' veces') + '. Se reintenta a las 3 hs.' : 'Pendiente de leer (se lee en segundo plano o a las 3 hs).', leer: true };
+    case 'Error': return { cls: 'error', txt: 'No se pudo leer el PDF (falló 3 veces). No entra en Buscar.', leer: true };
+    case 'Vacio': return esPdfCom(c)
+      ? { cls: '', txt: 'El PDF no tiene texto para leer (¿escaneado?). Se busca por Asunto, Resumen y Observación.', leer: true }
+      : { cls: '', txt: 'No es un PDF: se busca por Asunto, Resumen y Observación.', leer: false };
+    default: return { cls: '', txt: '—', leer: false };
+  }
+}
+function pintarTextoEdit(c) {
+  const el = document.getElementById('edit-texto');
+  if (!c) { el.innerHTML = ''; return; }
+  const info = infoTexto(c);
+  const leyendo = !!_indexando[c.id];
+  el.className = 'info-lectura texto-linea' + (info.cls ? ' ' + info.cls : '');
+  el.innerHTML = '<span>' + (leyendo ? '<span class="btn-mini-spin"></span> Leyendo el PDF…' : escaparHtml(info.txt)) + '</span>' +
+    (estado.puedeEditar && info.leer
+      ? '<button type="button" class="btn btn-secondary btn-sm" id="btn-leer-ahora"' + (leyendo ? ' disabled' : '') + '>Leer ahora</button>' : '');
+  const b = document.getElementById('btn-leer-ahora');
+  if (b) b.onclick = function () { indexarEnFondo(c.id, true); };
+}
+/** Después de un cambio de EstadoTexto: Ver/Editar abierto, panel del dashboard y nota de Buscar. */
+function refrescarTextoUI(id) {
+  if (document.getElementById('modal-editar').classList.contains('open') && estado.editId === id) pintarTextoEdit(comPorId(id));
+  if (estado.seccion === 'inicio' && estado.dashboard) renderInconsistencias(estado.dashboard);
+  if (estado.seccion === 'buscar') pintarNotaBuscar();
+}
+/** Pide al backend leer el PDF. reintentar=true = "Leer ahora" (también desde Error). Se ve en el panel de tareas. */
+async function indexarEnFondo(id, reintentar) {
+  if (_indexando[id] || !estado.obra) return;
+  const obraId = estado.obra.obraId;
+  const desc = descDoc(comPorId(id));
+  const clave = 'texto-' + id;
+  _indexando[id] = true;
+  tareaIniciar(clave, 'Leyendo el PDF de ' + desc + '…');
+  refrescarTextoUI(id);
+  const otra = function () { return !estado.obra || estado.obra.obraId !== obraId; };
+  const reintentarFn = function () { indexarEnFondo(id, true); };
+  try {
+    const r = await api('indexarTexto', reintentar ? { id: id, reintentar: true } : { id: id });
+    if (otra()) { tareaQuitar(clave); return; }
+    if (r.comunicacion) upsertComunicacion(r.comunicacion);
+    if (r.estadoTexto === 'Indexado') tareaOk(clave, 'PDF de ' + desc + ' leído: ya se puede buscar');
+    else if (r.estadoTexto === 'Vacio') tareaOk(clave, desc + ': el adjunto no tiene texto para leer');
+    else tareaError(clave, 'No se pudo leer el PDF de ' + desc + (r.estadoTexto === 'Error' ? ' (falló 3 veces).' : '. Se reintenta a las 3 hs.'),
+      [{ texto: 'Reintentar', fn: reintentarFn, primario: true }]);
+  } catch (err) {
+    if (otra()) { tareaQuitar(clave); return; }
+    tareaError(clave, 'No se pudo leer el PDF de ' + desc + ': ' + err.message, [{ texto: 'Reintentar', fn: reintentarFn, primario: true }]);
+  } finally {
+    delete _indexando[id];
+    if (!otra()) refrescarTextoUI(id);
+  }
+}
+
+// ══════════════════════════════════════════════
+// v6.1.2 — PESTAÑA BUSCAR (búsqueda en el backend)
+// ══════════════════════════════════════════════
+const BUSQ_ORIGEN = { asunto: 'Asunto', resumen: 'Resumen', observacion: 'Observación' };
+
+function renderBuscar() {
+  renderBusqTipos();
+  pintarModoBusq();
+  pintarNotaBuscar();
+  pintarResultadosBusq();
+  const inp = document.getElementById('busq-input');
+  if (!inp.value) setTimeout(function () { inp.focus(); }, 50);
+}
+function renderBusqTipos() {
+  const tipos = listaTipos();
+  const b = estado.busq;
+  if (b.tipo !== 'todos' && !tipos.some(function (t) { return t.tipo === b.tipo; })) b.tipo = 'todos';
+  let html = '<button class="filtro-btn' + (b.tipo === 'todos' ? ' activo-todos' : '') + '" data-tipo="todos">Todos</button>';
+  html += tipos.map(function (t) {
+    const c = colorTipo(t.tipo);
+    const estilo = b.tipo === t.tipo ? ' style="background:' + c.bg + ';border-color:' + c.base + ';color:' + c.fg + '"' : '';
+    return '<button class="filtro-btn"' + estilo + ' data-tipo="' + escaparHtml(t.tipo) + '" title="' + escaparHtml(t.descripcion) + '">' + escaparHtml(t.tipo) + '</button>';
+  }).join('');
+  const cont = document.getElementById('busq-tipos');
+  cont.innerHTML = html;
+  cont.querySelectorAll('[data-tipo]').forEach(function (btn) {
+    btn.onclick = function () { b.tipo = btn.dataset.tipo; renderBusqTipos(); if (b.termino) ejecutarBusqueda(); };
+  });
+}
+function pintarModoBusq() {
+  const b = estado.busq;
+  const comp = document.getElementById('busq-completa'), sue = document.getElementById('busq-sueltas');
+  sue.classList.toggle('activo-todos', b.palabrasSueltas);
+  comp.classList.toggle('activo-todos', b.palabraCompleta || b.palabrasSueltas);
+  comp.disabled = b.palabrasSueltas;
+  comp.title = b.palabrasSueltas ? 'Con «Palabras sueltas» cada palabra ya se busca completa' : 'Que «multa» no encuentre «simultaneidad»';
+}
+function toggleBusq(clave) {
+  estado.busq[clave] = !estado.busq[clave];
+  pintarModoBusq();
+  if (estado.busq.termino) ejecutarBusqueda();
+}
+function pintarNotaBuscar() {
+  const tx = textosSinIndexar();
+  const el = document.getElementById('busq-nota');
+  const n = tx ? tx.pendientes : 0;
+  el.classList.toggle('hidden', !n);
+  el.textContent = n ? (n === 1 ? '1 PDF todavía no se leyó' : n + ' PDF todavía no se leyeron') +
+    ': su contenido no entra en la búsqueda (su Asunto, Resumen y Observación sí). El detalle está en Inicio → Inconsistencias.' : '';
+}
+async function ejecutarBusqueda() {
+  const b = estado.busq;
+  const inp = document.getElementById('busq-input');
+  const t = inp.value.trim();
+  if (!t) { b.termino = ''; b.resultados = null; b.error = ''; b.token++; b.cargando = false; pintarResultadosBusq(); inp.focus(); return; }
+  const tok = ++b.token;
+  b.termino = t; b.cargando = true; b.error = '';
+  pintarResultadosBusq();
+  try {
+    const r = await api('buscar', { termino: t, tipo: b.tipo, palabraCompleta: b.palabraCompleta, palabrasSueltas: b.palabrasSueltas });
+    if (tok !== b.token) return;
+    b.resultados = r.resultados || []; b.total = r.total || 0; b.recortado = !!r.recortado; b.ms = r.ms || 0;
+  } catch (err) {
+    if (tok !== b.token) return;
+    b.resultados = null; b.error = err.message;
+  } finally {
+    if (tok === b.token) { b.cargando = false; pintarResultadosBusq(); }
+  }
+}
+document.getElementById('busq-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); ejecutarBusqueda(); } });
+
+function htmlFragmento(f) {
+  const lbl = f.origen === 'pdf' ? ('PDF' + (f.pagina !== '' && f.pagina !== null && f.pagina !== undefined ? ' · pág. ' + f.pagina : '')) : (BUSQ_ORIGEN[f.origen] || f.origen);
+  const lim = function (x) { return escaparHtml(String(x || '').replace(/\s+/g, ' ')); };
+  return '<div class="busq-frag"><span class="busq-origen' + (f.origen === 'pdf' ? ' pdf' : '') + '">' + escaparHtml(lbl) + '</span>' +
+    '<span class="busq-txt">' + lim(f.antes) + '<mark>' + lim(f.match) + '</mark>' + lim(f.despues) + '</span></div>';
+}
+function pintarResultadosBusq() {
+  const b = estado.busq;
+  const est = document.getElementById('busq-estado');
+  const cont = document.getElementById('busq-resultados');
+  est.className = 'busq-estado';
+  document.getElementById('btn-buscar').disabled = b.cargando;
+  if (b.cargando) { est.innerHTML = '<span class="btn-mini-spin"></span> Buscando «' + escaparHtml(b.termino) + '»…'; return; }
+  if (b.error) { est.classList.add('error'); est.textContent = '⚠ ' + b.error; cont.innerHTML = ''; return; }
+  if (!b.resultados) { est.textContent = ''; cont.innerHTML = ''; return; }
+  if (!b.resultados.length) {
+    est.textContent = '';
+    cont.innerHTML = '<div class="busq-vacio">Sin resultados para «' + escaparHtml(b.termino) + '»' + (b.tipo !== 'todos' ? ' en ' + escaparHtml(b.tipo) : '') + '.</div>';
+    return;
+  }
+  const nCoin = b.resultados.reduce(function (s, r) { return s + r.coincidencias.total; }, 0);
+  est.textContent = b.total + (b.total === 1 ? ' documento' : ' documentos') + ' · ' + nCoin + (nCoin === 1 ? ' coincidencia' : ' coincidencias') +
+    (b.recortado ? ' · se muestran los primeros ' + b.resultados.length : '');
+  cont.innerHTML = b.resultados.map(function (r) {
+    const restan = r.coincidencias.paginasPdf - r.coincidencias.pdfMostradas;
+    const esPdf = /\.pdf$/i.test(String(r.adjuntoNombre || ''));
+    return '<div class="busq-res' + (r.estado === 'Anulado' ? ' anulado' : '') + '" data-id="' + escaparHtml(r.id) + '">' +
+      '<div class="busq-res-cab">' + badgeTipo(r.tipo) + '<span class="vinc-num">' + escaparHtml(r.numero) + '</span>' +
+      '<span class="busq-asunto" data-ver="1" title="Ver documento">' + escaparHtml(r.asunto) + '</span>' +
+      '<span class="vinc-fecha">' + fmtFecha(r.fecha) + '</span>' + (r.estado !== 'Activo' ? badgeEstado(r.estado) : '') + '</div>' +
+      r.fragmentos.map(htmlFragmento).join('') +
+      '<div class="busq-pie"><span class="busq-mas">' + (restan > 0 ? 'También en ' + restan + (restan === 1 ? ' página más' : ' páginas más') + ' del PDF' : '') + '</span>' +
+      '<span class="busq-acc">' +
+      (r.adjuntoUrl ? '<a class="btn btn-secondary btn-sm" href="' + escaparHtml(r.adjuntoUrl) + '" target="_blank" rel="noopener">' + (esPdf ? 'Abrir PDF' : 'Abrir adjunto') + '</a>' : '') +
+      '<button class="btn btn-secondary btn-sm" data-ver="1">Ver documento</button></span></div></div>';
+  }).join('');
+}
+document.getElementById('busq-resultados').addEventListener('click', function (e) {
+  const v = e.target.closest('[data-ver]');
+  if (!v) return;
+  const id = v.closest('.busq-res').dataset.id;
+  if (!comPorId(id)) { mostrarToast('Ese documento no está en memoria: tocá ↻ Actualizar en Comunicaciones'); return; }
+  abrirModalEditar(id);
+});
 
 // ══════════════════════════════════════════════
 // HITOS (V5 + IdHito)
