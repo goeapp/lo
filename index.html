@@ -3,11 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra v6.1.0</title>
+<title>LibroObra v6.1.1</title>
 <!--
-  index_libroobra_v6_1_0.html — LibroObra v6.1.0 (05-oct-2026)
-  Backend: gas_libroobra_v6_1_0.gs (misma API_URL: publicar como Nueva versión
+  index_libroobra_v6_1_1.html — LibroObra v6.1.1 (06-oct-2026)
+  Backend: gas_libroobra_v6_1_1.gs (misma API_URL: publicar como Nueva versión
   de la implementación actual).
+
+  QUÉ CAMBIÓ EN v6.1.1 (respecto a v6.1.0) — anotado en el cierre del 05-oct:
+   - Requiere respuesta por documento (§2.1, opción C):
+     · Alta con al menos un "Responde a" → nace sin requerir respuesta
+       (lo decide el backend; el alta lo avisa debajo de "Responde a").
+     · Ver/Editar: interruptor "Requiere respuesta: Sí / No" (solo admin),
+       se graba con "Guardar cambios" y anticipa qué va a pasar con el plazo.
+     · "+ Vincular" con "Responde a" desde un documento Pendiente: pregunta
+       si ese documento deja de requerir respuesta (Sí / No, sigue pendiente
+       / Cancelar).
+   - Modales de Alta y Ver/Editar en dos columnas, hasta 1100 px (§2.2).
+     En pantallas angostas vuelven a una sola columna.
+   - Obligatorios del alta vacíos con fondo ámbar suave (§2.3).
+   - Historial: muestra "No requiere respuesta" cuando cambió el interruptor.
+
+  (historia anterior)
+  index_libroobra_v6_1_0.html — LibroObra v6.1.0 (05-oct-2026)
 
   QUÉ CAMBIÓ EN v6.1.0 (respecto a v6.0.2) — diseño acordado el 05-oct:
    - Semáforo de plazos (calculado acá, no se graba): verde > 3 días,
@@ -717,6 +734,35 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 .inc-rangos { color: var(--text); }
 .inc-nota { font-size: .72rem; color: var(--muted); font-style: italic; }
 
+/* ══════════════════════════════════════════════
+   v6.1.1 — MODALES EN DOS COLUMNAS, INTERRUPTOR, OBLIGATORIOS EN ÁMBAR
+══════════════════════════════════════════════ */
+.modal.modal-ancho { max-width: 1100px; }
+.modal-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
+.modal-col { min-width: 0; }
+.modal-col + .modal-col { border-left: 1px solid var(--border); padding-left: 24px; }
+.modal-col-tit { font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); margin-bottom: 10px; }
+@media (max-width: 860px) {
+  .modal-cols { grid-template-columns: 1fr; }
+  .modal-col + .modal-col { border-left: none; padding-left: 0; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 2px; }
+}
+
+.seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.seg button { flex: 1; padding: 7px 10px; background: var(--surface); border: none; font-size: .85rem; font-weight: 600; color: var(--muted); transition: background .15s, color .15s; }
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button:hover:not(.on):not(:disabled) { background: var(--bg); color: var(--accent2); }
+.seg button.on { background: var(--accent2); color: #fff; }
+.seg button:disabled { cursor: default; }
+.seg.solo-lectura button.on { background: #64748b; }
+#edit-req-hint { margin: -6px 0 14px; min-height: 0; }
+.form-hint.aviso { color: #92400e; font-weight: 600; }
+
+.form-control.req-vacio, .file-zone.req-vacio { background: #fffbeb; border-color: #fcd34d; }
+.form-control.req-vacio:focus { border-color: var(--accent); }
+
+.dialogo-caja.ancho { max-width: 440px; }
+.dialogo-botones.columna { flex-direction: column; }
+
 /* Historial: cambios anteriores cargando (v6.0.2) */
 .tl-cargando { display: flex; align-items: center; gap: 8px; font-size: .75rem; color: var(--muted); padding: 2px 0 14px 6px; }
 .tl-cargando .btn-mini-spin { flex-shrink: 0; }
@@ -739,7 +785,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   <div class="caja">
     <span class="caja-emoji">📋</span>
     <div class="caja-logo">LibroObra</div>
-    <div class="caja-version" id="version-login">v6.1.0</div>
+    <div class="caja-version" id="version-login">v6.1.1</div>
     <div class="caja-sub">Registro de comunicaciones de obra</div>
 
     <div id="paso-email" class="login-paso activo">
@@ -803,7 +849,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <button class="hdr-btn" id="btn-cambiar-obra" onclick="cambiarObra()">Cambiar obra</button>
     <button class="hdr-btn hdr-btn-instalar hidden" id="btn-instalar">Instalar</button>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version" id="version-app">v6.1.0</span>
+    <span class="hdr-version" id="version-app">v6.1.1</span>
     <button class="hdr-btn" onclick="confirmarCerrarSesion()">Salir</button>
   </header>
 
@@ -982,68 +1028,79 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   </main>
 </div>
 
-<!-- ═══════════════ MODAL — NUEVA COMUNICACIÓN ═══════════════ -->
+<!-- ═══════════════ MODAL — NUEVA COMUNICACIÓN (v6.1.1: dos columnas) ═══════════════ -->
 <div class="modal-overlay" id="modal-carga">
-  <div class="modal" style="max-width:640px">
+  <div class="modal modal-ancho">
     <div class="modal-header">
       <span class="modal-title">Nueva comunicación</span>
       <button class="modal-close" onclick="cerrarModal('modal-carga')">×</button>
     </div>
     <div class="modal-body">
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">Tipo <span class="req">*</span></label><select class="form-control" id="carga-tipo" onchange="validarNumeroEnVivo()"></select></div>
-        <div class="form-group">
-          <label class="form-label">Número <span class="req">*</span></label>
-          <input type="text" class="form-control" id="carga-num" placeholder="Ej: 14" autocomplete="off" oninput="validarNumeroEnVivo()">
-          <div class="form-hint" id="carga-num-hint"></div>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">Fecha del documento <span class="req">*</span></label><input type="date" class="form-control" id="carga-fecha"></div>
-      </div>
-      <div class="form-row full">
-        <div class="form-group"><label class="form-label">Asunto <span class="req">*</span></label><input type="text" class="form-control" id="carga-asunto" placeholder="Tema del documento" maxlength="300"></div>
-      </div>
-      <div class="form-row full">
-        <div class="form-group"><label class="form-label">Resumen <span class="req">*</span></label><textarea class="form-control" id="carga-resumen" rows="3" placeholder="Descripción breve del documento"></textarea></div>
-      </div>
-      <div class="form-row full">
-        <div class="form-group"><label class="form-label">Etiquetas</label><div class="etiquetas-wrap" id="carga-etiquetas"></div></div>
-      </div>
-      <div class="form-row full">
-        <div class="form-group">
-          <label class="form-label">Hashtags</label>
-          <input type="text" class="form-control" id="carga-hashtags" placeholder="#hito #h3 …" autocomplete="off" oninput="sugerirHashtags('carga')">
-          <div class="hash-sugerencias" id="carga-hashtags-sug"></div>
-        </div>
-      </div>
-      <!-- v6.1.0 — vínculos del alta: este documento es el origen -->
-      <div class="form-row full">
-        <div class="form-group">
-          <label class="form-label">Responde a <span style="text-transform:none;font-weight:400">(opcional · uno o varios)</span></label>
-          <div class="vinc-picker" id="carga-resp"></div>
-        </div>
-      </div>
-      <div class="form-row full">
-        <div class="form-group">
-          <label class="form-label">Referencias <span style="text-transform:none;font-weight:400">(opcional · "como se indica en…")</span></label>
-          <div class="vinc-picker" id="carga-ref"></div>
-        </div>
-      </div>
-      <div class="form-row full">
-        <div class="form-group"><label class="form-label">Observación</label><textarea class="form-control" id="carga-obs" rows="2" placeholder="Notas adicionales (opcional)"></textarea></div>
-      </div>
-      <div class="form-row full">
-        <div class="form-group">
-          <label class="form-label">Adjunto <span class="req">*</span> <span style="text-transform:none;font-weight:400">(máx. 25 MB)</span></label>
-          <div class="file-zone" id="file-zone"
-               onclick="document.getElementById('file-input').click()"
-               ondragover="fileDragOver(event)" ondrop="fileDrop(event)" ondragleave="fileDragLeave()">
-            <div><svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted)"><path d="M13.5 7.5 7.5 13.5a4.243 4.243 0 0 1-6-6l7-7a2.828 2.828 0 0 1 4 4l-7 7a1.414 1.414 0 0 1-2-2l6-6"/></svg></div>
-            <div class="file-zone-text">Hacé clic o arrastrá el archivo aquí</div>
-            <div class="file-zone-name hidden" id="file-name"></div>
+      <div class="modal-cols">
+        <!-- Columna izquierda: el documento -->
+        <div class="modal-col">
+          <div class="modal-col-tit">El documento</div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Tipo <span class="req">*</span></label><select class="form-control req-campo" id="carga-tipo" onchange="validarNumeroEnVivo(); marcarObligatorios()"></select></div>
+            <div class="form-group">
+              <label class="form-label">Número <span class="req">*</span></label>
+              <input type="text" class="form-control req-campo" id="carga-num" placeholder="Ej: 14" autocomplete="off" oninput="validarNumeroEnVivo(); marcarObligatorios()">
+              <div class="form-hint" id="carga-num-hint"></div>
+            </div>
           </div>
-          <input type="file" id="file-input" onchange="fileSeleccionado(this.files[0])">
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Fecha del documento <span class="req">*</span></label><input type="date" class="form-control req-campo" id="carga-fecha" oninput="marcarObligatorios()" onchange="marcarObligatorios()"></div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group"><label class="form-label">Asunto <span class="req">*</span></label><input type="text" class="form-control req-campo" id="carga-asunto" placeholder="Tema del documento" maxlength="300" oninput="marcarObligatorios()"></div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group"><label class="form-label">Resumen <span class="req">*</span></label><textarea class="form-control req-campo" id="carga-resumen" rows="4" placeholder="Descripción breve del documento" oninput="marcarObligatorios()"></textarea></div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">Adjunto <span class="req">*</span> <span style="text-transform:none;font-weight:400">(máx. 25 MB)</span></label>
+              <div class="file-zone" id="file-zone"
+                   onclick="document.getElementById('file-input').click()"
+                   ondragover="fileDragOver(event)" ondrop="fileDrop(event)" ondragleave="fileDragLeave()">
+                <div><svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted)"><path d="M13.5 7.5 7.5 13.5a4.243 4.243 0 0 1-6-6l7-7a2.828 2.828 0 0 1 4 4l-7 7a1.414 1.414 0 0 1-2-2l6-6"/></svg></div>
+                <div class="file-zone-text">Hacé clic o arrastrá el archivo aquí</div>
+                <div class="file-zone-name hidden" id="file-name"></div>
+              </div>
+              <input type="file" id="file-input" onchange="fileSeleccionado(this.files[0])">
+            </div>
+          </div>
+        </div>
+        <!-- Columna derecha: clasificación y vínculos -->
+        <div class="modal-col">
+          <div class="modal-col-tit">Clasificación y vínculos</div>
+          <!-- v6.1.0 — vínculos del alta: este documento es el origen -->
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">Responde a <span style="text-transform:none;font-weight:400">(opcional · uno o varios)</span></label>
+              <div class="vinc-picker" id="carga-resp"></div>
+              <div class="form-hint" id="carga-resp-hint"></div>
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">Referencias <span style="text-transform:none;font-weight:400">(opcional · "como se indica en…")</span></label>
+              <div class="vinc-picker" id="carga-ref"></div>
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group"><label class="form-label">Etiquetas</label><div class="etiquetas-wrap" id="carga-etiquetas"></div></div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">Hashtags</label>
+              <input type="text" class="form-control" id="carga-hashtags" placeholder="#hito #h3 …" autocomplete="off" oninput="sugerirHashtags('carga')">
+              <div class="hash-sugerencias" id="carga-hashtags-sug"></div>
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group"><label class="form-label">Observación</label><textarea class="form-control" id="carga-obs" rows="2" placeholder="Notas adicionales (opcional)"></textarea></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1054,56 +1111,77 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   </div>
 </div>
 
-<!-- ═══════════════ MODAL — EDITAR / VER COMUNICACIÓN ═══════════════ -->
+<!-- ═══════════════ MODAL — EDITAR / VER COMUNICACIÓN (v6.1.1: dos columnas) ═══════════════ -->
 <div class="modal-overlay" id="modal-editar">
-  <div class="modal" style="max-width:600px">
+  <div class="modal modal-ancho">
     <div class="modal-header">
       <span class="modal-title" id="edit-titulo">Editar</span>
       <button class="modal-close" onclick="cerrarModal('modal-editar')">×</button>
     </div>
     <div class="modal-body">
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">Fecha del documento</label><div class="info-lectura" id="edit-fecha"></div></div>
-        <div class="form-group"><label class="form-label">Adjunto</label><div class="info-lectura" id="edit-adjunto"></div></div>
-      </div>
-      <div class="form-row full">
-        <div class="form-group"><label class="form-label">Asunto</label><div class="info-lectura" id="edit-asunto"></div></div>
-      </div>
-      <div class="form-row full">
-        <div class="form-group"><label class="form-label">Resumen</label><div class="info-lectura" id="edit-resumen"></div><div class="info-meta" id="edit-meta"></div></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">Plazo de respuesta</label><div class="info-lectura" id="edit-plazo"></div></div>
-        <div class="form-group">
-          <label class="form-label">Estado</label>
-          <select class="form-control" id="edit-estado">
-            <option value="Activo">Activo</option>
-            <option value="Anulado">Anulado</option>
-            <option value="Aviso">Aviso</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-row full">
-        <div class="form-group"><label class="form-label">Etiquetas</label><div class="etiquetas-wrap" id="edit-etiquetas"></div></div>
-      </div>
-      <div class="form-row full">
-        <div class="form-group">
-          <label class="form-label">Hashtags</label>
-          <input type="text" class="form-control" id="edit-hashtags" placeholder="#hito #h3 …" autocomplete="off" oninput="sugerirHashtags('edit')">
-          <div class="hash-sugerencias" id="edit-hashtags-sug"></div>
-        </div>
-      </div>
-      <div class="form-row full">
-        <div class="form-group"><label class="form-label">Observación</label><textarea class="form-control" id="edit-obs" rows="3"></textarea></div>
-      </div>
-      <!-- v6.1.0 — Hilo: vínculos directos en las dos direcciones -->
-      <div class="form-row full">
-        <div class="form-group">
-          <div class="hilo-cabecera">
-            <label class="form-label">Hilo</label>
-            <button class="btn btn-secondary btn-sm hidden" id="btn-vincular" onclick="abrirModalVincular()">+ Vincular</button>
+      <div class="modal-cols">
+        <!-- Columna izquierda: el documento -->
+        <div class="modal-col">
+          <div class="modal-col-tit">El documento</div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Fecha del documento</label><div class="info-lectura" id="edit-fecha"></div></div>
+            <div class="form-group"><label class="form-label">Adjunto</label><div class="info-lectura" id="edit-adjunto"></div></div>
           </div>
-          <div class="hilo" id="edit-hilo"></div>
+          <div class="form-row full">
+            <div class="form-group"><label class="form-label">Asunto</label><div class="info-lectura" id="edit-asunto"></div></div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group"><label class="form-label">Resumen</label><div class="info-lectura" id="edit-resumen"></div><div class="info-meta" id="edit-meta"></div></div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group"><label class="form-label">Plazo de respuesta</label><div class="info-lectura" id="edit-plazo"></div></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Estado</label>
+              <select class="form-control" id="edit-estado">
+                <option value="Activo">Activo</option>
+                <option value="Anulado">Anulado</option>
+                <option value="Aviso">Aviso</option>
+              </select>
+            </div>
+            <!-- v6.1.1 — interruptor por documento (§2.1) -->
+            <div class="form-group">
+              <label class="form-label">Requiere respuesta</label>
+              <div class="seg" id="edit-req">
+                <button type="button" data-req="1">Sí</button>
+                <button type="button" data-req="0">No</button>
+              </div>
+            </div>
+          </div>
+          <div class="form-hint" id="edit-req-hint"></div>
+        </div>
+        <!-- Columna derecha: clasificación y vínculos -->
+        <div class="modal-col">
+          <div class="modal-col-tit">Clasificación y vínculos</div>
+          <!-- v6.1.0 — Hilo: vínculos directos en las dos direcciones -->
+          <div class="form-row full">
+            <div class="form-group">
+              <div class="hilo-cabecera">
+                <label class="form-label">Hilo</label>
+                <button class="btn btn-secondary btn-sm hidden" id="btn-vincular" onclick="abrirModalVincular()">+ Vincular</button>
+              </div>
+              <div class="hilo" id="edit-hilo"></div>
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group"><label class="form-label">Etiquetas</label><div class="etiquetas-wrap" id="edit-etiquetas"></div></div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">Hashtags</label>
+              <input type="text" class="form-control" id="edit-hashtags" placeholder="#hito #h3 …" autocomplete="off" oninput="sugerirHashtags('edit')">
+              <div class="hash-sugerencias" id="edit-hashtags-sug"></div>
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group"><label class="form-label">Observación</label><textarea class="form-control" id="edit-obs" rows="3"></textarea></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1225,7 +1303,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 // ══════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════
-const APP_VERSION = 'v6.1.0';
+const APP_VERSION = 'v6.1.1';
 const API_URL = 'https://script.google.com/macros/s/AKfycbxDN2F_K6z4wQXDJAyyZ6EdoSqoQgHv8d8f7gXGo-QYdke3DXW6hvZtEnmEy9xFpjTO/exec';
 const SESION_KEY = 'lo_sesion';
 const OBRA_KEY = 'lo_obra_actual';
@@ -1283,7 +1361,8 @@ const estado = {
   histToken: 0,                       // v6.0.2 — descarta respuestas de un historial que ya no está abierto
   filtroPendientes: false,            // v6.1.0 — filtro "Pendientes de respuesta"
   editSnapshot: '',                   // v6.1.0 — campos del modal Editar al abrir (avisa cambios sin guardar al navegar el Hilo)
-  pickers: {}                         // v6.1.0 — selectores de documentos (alta: resp/ref · vincular)
+  pickers: {},                        // v6.1.0 — selectores de documentos (alta: resp/ref · vincular)
+  editReq: false                      // v6.1.1 — valor del interruptor "Requiere respuesta" en Ver/Editar (sin guardar)
 };
 
 // ══════════════════════════════════════════════
@@ -1452,6 +1531,7 @@ function mostrarConfirm(titulo, desc, opciones) {
   opciones = opciones || {};
   return new Promise(function (resolve) {
     dialogoResolve = resolve;
+    estiloDialogo_(false);
     document.getElementById('dialogo-icono').textContent = '';
     document.getElementById('dialogo-title').textContent = titulo;
     document.getElementById('dialogo-desc').textContent = desc;
@@ -1464,6 +1544,7 @@ function mostrarConfirm(titulo, desc, opciones) {
 function mostrarAviso(mensaje, titulo) {
   return new Promise(function (resolve) {
     dialogoResolve = resolve;
+    estiloDialogo_(false);
     document.getElementById('dialogo-icono').textContent = '⚠️';
     document.getElementById('dialogo-title').textContent = titulo || 'Aviso';
     document.getElementById('dialogo-desc').textContent = mensaje;
@@ -1473,7 +1554,33 @@ function mostrarAviso(mensaje, titulo) {
 }
 function cerrarDialogo(resultado) {
   document.getElementById('dialogo-overlay').classList.remove('visible');
-  if (dialogoResolve) { const r = dialogoResolve; dialogoResolve = null; r(!!resultado); }
+  // v6.1.1 — mostrarElegir resuelve con el valor (texto) del botón; confirm/aviso con booleano
+  if (dialogoResolve) { const r = dialogoResolve; dialogoResolve = null; r(typeof resultado === 'string' ? resultado : !!resultado); }
+}
+function estiloDialogo_(ancho) {
+  document.querySelector('.dialogo-caja').classList.toggle('ancho', !!ancho);
+  document.getElementById('dialogo-botones').classList.toggle('columna', !!ancho);
+}
+/**
+ * v6.1.1 — Diálogo con varias opciones (botones apilados). Resuelve con el
+ * valor del botón elegido, o null si se cierra (Escape / clic afuera).
+ * opciones: [{ valor, texto, estilo: 'aceptar' | 'cancelar' | 'danger' }]
+ */
+function mostrarElegir(titulo, desc, opciones) {
+  return new Promise(function (resolve) {
+    dialogoResolve = function (r) { resolve(typeof r === 'string' ? r : null); };
+    estiloDialogo_(true);
+    document.getElementById('dialogo-icono').textContent = '';
+    document.getElementById('dialogo-title').textContent = titulo;
+    document.getElementById('dialogo-desc').textContent = desc;
+    document.getElementById('dialogo-botones').innerHTML = opciones.map(function (o) {
+      return '<button class="btn-dialogo-' + (o.estilo || 'cancelar') + '" data-valor="' + escaparHtml(o.valor) + '">' + escaparHtml(o.texto) + '</button>';
+    }).join('');
+    document.querySelectorAll('#dialogo-botones [data-valor]').forEach(function (b) {
+      b.onclick = function () { cerrarDialogo(b.dataset.valor); };
+    });
+    document.getElementById('dialogo-overlay').classList.add('visible');
+  });
 }
 let toastTimeoutId = null;
 function mostrarToast(mensaje) {
@@ -2782,6 +2889,7 @@ function _coincide(c, tokens) {
 function _ordenUrgencia(c) { const s = esPendiente(c) ? semaforo(c) : null; return s ? s.orden : 1e7; }
 
 function crearPicker(contId, opciones) {
+  opciones = opciones || {};
   const cont = document.getElementById(contId);
   cont.innerHTML = '<div class="vinc-chips"></div>' +
     '<input type="text" class="form-control vinc-input" autocomplete="off" placeholder="Buscar por tipo y número (NP 3) o por asunto…">' +
@@ -2799,6 +2907,7 @@ function crearPicker(contId, opciones) {
     chips.innerHTML = p.items.map(function (x, i) {
       return '<span class="vinc-chip" title="' + escaparHtml(x.asunto) + '">' + escaparHtml(x.desc) + '<button type="button" data-quitar="' + i + '" title="Quitar">×</button></span>';
     }).join('');
+    if (opciones.onChange) opciones.onChange(p.items);   // v6.1.1
   };
   p.candidatos = function () {
     const q = input.value.trim(), tokens = _tokens(q);
@@ -2870,8 +2979,8 @@ function crearPicker(contId, opciones) {
   });
   return p;
 }
-function picker(nombre, contId, modo) {
-  if (!estado.pickers[nombre]) estado.pickers[nombre] = crearPicker(contId, { modo: modo });
+function picker(nombre, contId, modo, onChange) {
+  if (!estado.pickers[nombre]) estado.pickers[nombre] = crearPicker(contId, { modo: modo, onChange: onChange });
   return estado.pickers[nombre];
 }
 
@@ -2891,10 +3000,11 @@ function abrirModalCarga() {
   fecha.value = hoy; fecha.max = hoy;
   renderChipsEtiquetas('carga-etiquetas', [], false);
   sugerirHashtags('carga');
-  picker('cargaResp', 'carga-resp', 'resp').reset('resp', []);   // v6.1.0
+  picker('cargaResp', 'carga-resp', 'resp', actualizarHintResp).reset('resp', []);   // v6.1.0 (+ hint v6.1.1)
   picker('cargaRef', 'carga-ref', 'ref').reset('ref', []);
   limpiarArchivo();
   validarNumeroEnVivo();
+  marcarObligatorios();   // v6.1.1
   estado.altaId = uuid();   // mismo Id mientras el modal siga abierto (reintento manual tras un corte = idempotente)
   document.getElementById('btn-guardar-carga').disabled = false;
   abrirModal('modal-carga');
@@ -2902,7 +3012,32 @@ function abrirModalCarga() {
 }
 
 /** Muestra en vivo cómo se va a guardar el número y avisa si ya existe (datos en memoria). */
+/**
+ * v6.1.1 (§2.3) — Obligatorios del alta VACÍOS con fondo ámbar suave; al
+ * completarlos vuelven a blanco. Solo marca: la validación sigue en guardarCarga.
+ */
+function marcarObligatorios() {
+  ['carga-tipo', 'carga-num', 'carga-fecha', 'carga-asunto', 'carga-resumen'].forEach(function (id) {
+    const el = document.getElementById(id);
+    el.classList.toggle('req-vacio', !String(el.value || '').trim());
+  });
+  document.getElementById('file-zone').classList.toggle('req-vacio', !estado.file);
+}
+/** v6.1.1 (§2.1) — Debajo de "Responde a": avisa que el documento nace sin requerir respuesta. */
+function actualizarHintResp() {
+  const hint = document.getElementById('carga-resp-hint');
+  const p = estado.pickers.cargaResp;
+  const tipo = estado.tipos.find(function (t) { return t.tipo === document.getElementById('carga-tipo').value; });
+  const hay = !!(p && p.items.length);
+  hint.className = 'form-hint' + (hay && tipo && tipo.requiereRespuesta ? ' aviso' : '');
+  hint.textContent = !hay ? ''
+    : (tipo && tipo.requiereRespuesta
+      ? 'Como responde a otro documento, nace sin requerir respuesta. Si además pide algo, activalo después en Ver/Editar.'
+      : '');
+}
+
 function validarNumeroEnVivo() {
+  actualizarHintResp();   // v6.1.1 — el aviso depende del tipo elegido
   const tipoCod = document.getElementById('carga-tipo').value;
   const tipo = estado.tipos.find(function (t) { return t.tipo === tipoCod; });
   const raw = document.getElementById('carga-num').value;
@@ -2926,6 +3061,7 @@ function limpiarArchivo() {
   estado.file = null;
   document.getElementById('file-input').value = '';
   document.getElementById('file-name').classList.add('hidden');
+  marcarObligatorios();   // v6.1.1
 }
 function fileSeleccionado(f) {
   if (!f) return;
@@ -2938,6 +3074,7 @@ function fileSeleccionado(f) {
   const el = document.getElementById('file-name');
   el.textContent = f.name + ' · ' + (f.size / 1048576).toFixed(2) + ' MB';
   el.classList.remove('hidden');
+  marcarObligatorios();   // v6.1.1
 }
 function fileDragOver(e) { e.preventDefault(); document.getElementById('file-zone').classList.add('dragover'); }
 function fileDragLeave() { document.getElementById('file-zone').classList.remove('dragover'); }
@@ -3032,7 +3169,9 @@ function abrirModalEditar(id) {
   document.getElementById('edit-footer').innerHTML = soloLectura
     ? '<button class="btn btn-secondary" onclick="cerrarModal(\'modal-editar\')">Cerrar</button>'
     : '<button class="btn btn-secondary" onclick="cerrarModal(\'modal-editar\')">Cancelar</button><button class="btn btn-primary" onclick="guardarEdicion()" id="btn-guardar-edicion">Guardar cambios</button>';
-  // v6.1.0 — plazo + Hilo
+  // v6.1.0 — plazo + Hilo · v6.1.1 — interruptor "Requiere respuesta"
+  estado.editReq = !!c.requiereRespuesta;
+  pintarReqEdit(c);
   pintarPlazoEdit(c);
   document.getElementById('btn-vincular').classList.toggle('hidden', soloLectura);
   renderHilo(id);
@@ -3055,8 +3194,57 @@ function pintarPlazoEdit(c) {
 function snapshotEdit() {
   if (!estado.puedeEditar) return '';
   return JSON.stringify([document.getElementById('edit-estado').value, document.getElementById('edit-obs').value,
-    normalizarHashtags(document.getElementById('edit-hashtags').value), etiquetasElegidas('edit-etiquetas')]);
+    normalizarHashtags(document.getElementById('edit-hashtags').value), etiquetasElegidas('edit-etiquetas'), !!estado.editReq]);
 }
+
+// ── v6.1.1 — Interruptor "Requiere respuesta" (§2.1) ──
+// Se graba con "Guardar cambios" (misma foto de Historia que el resto de la edición).
+/** 'yyyy-MM-dd' + n días → 'yyyy-MM-dd' ('' si no se puede). */
+function sumarDiasISO(iso, n) {
+  const d = _parseISO(iso);
+  if (!d || n === '' || n === null || n === undefined || isNaN(Number(n))) return '';
+  d.setDate(d.getDate() + Number(n));
+  return d.getFullYear() + '-' + _p2(d.getMonth() + 1) + '-' + _p2(d.getDate());
+}
+function plazoDeTipo(tipoCod) {
+  const t = estado.tipos.find(function (x) { return x.tipo === tipoCod; });
+  return t && t.plazoDias !== '' && t.plazoDias !== null && t.plazoDias !== undefined ? Number(t.plazoDias) : '';
+}
+function pintarReqEdit(c) {
+  const seg = document.getElementById('edit-req');
+  const soloLectura = !estado.puedeEditar;
+  seg.classList.toggle('solo-lectura', soloLectura);
+  seg.querySelectorAll('button').forEach(function (b) {
+    b.classList.toggle('on', (b.dataset.req === '1') === !!estado.editReq);
+    b.disabled = soloLectura;
+  });
+  const hint = document.getElementById('edit-req-hint');
+  hint.className = 'form-hint';
+  hint.textContent = '';
+  if (soloLectura || !c || !!estado.editReq === !!c.requiereRespuesta) return;
+  hint.classList.add('aviso');
+  if (!estado.editReq) {
+    hint.textContent = 'Al guardar: se vacían el plazo, el vencimiento y el estado de respuesta.';
+    return;
+  }
+  const plazo = plazoDeTipo(c.tipo);
+  const queda = vinculosDe(c.id).respondidoPor.length ? 'Respondida (ya tiene una respuesta vinculada)' : 'Pendiente';
+  // tipo desactivado: no está en memoria, pero el backend igual toma su plazo de la hoja Tipos
+  if (!estado.tipos.some(function (t) { return t.tipo === c.tipo; })) {
+    hint.textContent = 'Al guardar: toma el plazo del tipo ' + c.tipo + ' en la hoja Tipos (cuenta desde el ' + fmtFecha(c.fecha) + ') y queda ' + queda + '.';
+    return;
+  }
+  hint.textContent = plazo === ''
+    ? 'Al guardar: el tipo ' + c.tipo + ' no tiene plazo en la hoja Tipos, así que queda "sin plazo" y ' + queda + '.'
+    : 'Al guardar: toma el plazo de Tipos (' + plazo + (plazo === 1 ? ' día' : ' días') + ' desde el ' + fmtFecha(c.fecha) +
+      ') → vence el ' + fmtFecha(sumarDiasISO(c.fecha, plazo)) + ' y queda ' + queda + '.';
+}
+document.getElementById('edit-req').addEventListener('click', function (e) {
+  const b = e.target.closest('[data-req]');
+  if (!b || !estado.puedeEditar) return;
+  estado.editReq = b.dataset.req === '1';
+  pintarReqEdit(comPorId(estado.editId));
+});
 function hayCambiosSinGuardar() { return estado.puedeEditar && document.getElementById('modal-editar').classList.contains('open') && snapshotEdit() !== estado.editSnapshot; }
 
 function renderHilo(id) {
@@ -3101,6 +3289,12 @@ function aplicarCambioVinculos(actualizadas) {
   if (document.getElementById('modal-editar').classList.contains('open') && estado.editId) {
     const c = comPorId(estado.editId);
     if (c) {
+      // v6.1.1 — si el backend cambió el "requiere" del documento abierto (opción C), el interruptor lo sigue
+      if (!!c.requiereRespuesta !== !!estado.editReq && (actualizadas || []).some(function (x) { return x.id === c.id; })) {
+        estado.editReq = !!c.requiereRespuesta;
+        try { const snap = JSON.parse(estado.editSnapshot); snap[4] = estado.editReq; estado.editSnapshot = JSON.stringify(snap); } catch (e) { }
+      }
+      pintarReqEdit(c);
       pintarPlazoEdit(c);
       document.getElementById('edit-meta').textContent = 'Cargado por ' + (c.usuarioCarga || '—') + ' el ' + fmtFechaHora(c.fechaHoraCarga) +
         (c.fechaHoraModif ? ' · última edición ' + fmtFechaHora(c.fechaHoraModif) + ' (' + c.usuarioModif + ')' : '');
@@ -3156,19 +3350,36 @@ async function guardarVincular() {
   const elegidos = p.valores();
   if (!elegidos.length) { mostrarAviso('Elegí al menos un documento.'); return; }
   const idOrigen = estado.editId;
+  // v6.1.1 — opción C: "Responde a" desde un documento Pendiente → preguntar si deja de requerir respuesta
+  let apagar = false;
+  const origen = comPorId(idOrigen);
+  if (tipo === VINC_RESPONDE && origen && esPendiente(origen)) {
+    const destinos = elegidos.map(function (e) { return descDoc(comPorId(e.idDestino)); }).join(', ');
+    const resp = await mostrarElegir('¿Deja de requerir respuesta?',
+      descDoc(origen) + ' responde a ' + destinos + '.\n\n¿' + descDoc(origen) + ' deja de requerir respuesta?', [
+        { valor: 'si', texto: 'Sí, deja de requerir respuesta', estilo: 'aceptar' },
+        { valor: 'no', texto: 'No, sigue pendiente', estilo: 'cancelar' },
+        { valor: 'cancelar', texto: 'Cancelar', estilo: 'cancelar' }
+      ]);
+    if (!resp || resp === 'cancelar') return;
+    apagar = resp === 'si';
+  }
   const btn = document.getElementById('btn-guardar-vinc');
   btn.disabled = true;
   spinner(true, 'Vinculando…');
   const actualizadas = [], errores = [];
-  let creados = 0;
+  let creados = 0, origenApagado = false;
   try {
     // uno por uno, en secuencia (cada uno idempotente por su IdVinculo)
     for (let i = 0; i < elegidos.length; i++) {
       const e = elegidos[i];
       try {
-        const r = await api('crearVinculo', { idVinculo: e.idVinculo, idOrigen: idOrigen, idDestino: e.idDestino, tipo: tipo });
+        const params = { idVinculo: e.idVinculo, idOrigen: idOrigen, idDestino: e.idDestino, tipo: tipo };
+        if (apagar) params.apagarRequiereOrigen = true;   // v6.1.1
+        const r = await api('crearVinculo', params);
         upsertVinculos([r.vinculo]);
         (r.actualizadas || []).forEach(function (c) { actualizadas.push(c); });
+        if (r.origenActualizado) { actualizadas.push(r.origenActualizado); origenApagado = true; }
         creados++;
       } catch (err) {
         errores.push(descDoc(comPorId(e.idDestino)) + ': ' + err.message);
@@ -3181,8 +3392,10 @@ async function guardarVincular() {
   if (creados) aplicarCambioVinculos(actualizadas);
   if (!errores.length) {
     cerrarModal('modal-vincular');
+    const nResp = actualizadas.filter(function (c) { return c.id !== idOrigen; }).length;
     mostrarToast('✓ ' + creados + (creados === 1 ? ' vínculo creado' : ' vínculos creados') +
-      (actualizadas.length ? ' · ' + actualizadas.length + (actualizadas.length === 1 ? ' respondida' : ' respondidas') : ''));
+      (nResp ? ' · ' + nResp + (nResp === 1 ? ' respondida' : ' respondidas') : '') +
+      (origenApagado ? ' · ' + descDoc(origen) + ' ya no requiere respuesta' : ''));
   } else {
     // quedan en el selector solo los que fallaron (con el mismo IdVinculo → reintentar no duplica)
     const fallaron = {};
@@ -3205,7 +3418,8 @@ async function guardarEdicion() {
       estado: document.getElementById('edit-estado').value,
       observacion: document.getElementById('edit-obs').value.trim(),
       etiquetas: etiquetasElegidas('edit-etiquetas'),
-      hashtags: normalizarHashtags(document.getElementById('edit-hashtags').value)
+      hashtags: normalizarHashtags(document.getElementById('edit-hashtags').value),
+      requiereRespuesta: !!estado.editReq   // v6.1.1
     });
     upsertComunicacion(r.comunicacion);
     cerrarModal('modal-editar');
@@ -3237,7 +3451,7 @@ function itemActualHist_(c) {
     fechaHora: c.fechaHoraModif || c.fechaHoraCarga, usuario: c.usuarioModif || c.usuarioCarga, esActual: true
   };
 }
-function htmlItemsHist_(items, previo) {
+function htmlItemsHist_(items, previo, huboReq) {
   return items.map(function (h, i) {
     const ant = i > 0 ? items[i - 1] : previo;
     let delta = '';
@@ -3249,16 +3463,19 @@ function htmlItemsHist_(items, previo) {
       '<div class="tl-estado">' + escaparHtml(est) + '</div>' +
       (h.observacion ? '<div class="tl-obs">' + escaparHtml(h.observacion) + '</div>' : '') +
       (h.hashtags ? '<div class="tl-obs">' + escaparHtml(h.hashtags) + '</div>' : '') +
-      (h.requiereRespuesta && h.estadoRespuesta ? '<div class="tl-obs" style="font-style:normal">Respuesta: ' + escaparHtml(h.estadoRespuesta) + '</div>' : '') +   // v6.1.0
+      (h.requiereRespuesta && h.estadoRespuesta ? '<div class="tl-obs" style="font-style:normal">Respuesta: ' + escaparHtml(h.estadoRespuesta) + '</div>'
+        : (huboReq && !h.requiereRespuesta ? '<div class="tl-obs" style="font-style:normal">No requiere respuesta</div>' : '')) +   // v6.1.0 / v6.1.1
       '<div class="tl-usr">por ' + escaparHtml(h.usuario || '—') + '</div></div></div>';
   }).join('');
 }
 /** Línea de tiempo: fotos anteriores (o un aviso en su lugar) + estado actual. */
 function pintarHist_(body, c, anteriores, avisoHtml) {
   const actual = itemActualHist_(c);
+  // v6.1.1 — si en algún momento requirió respuesta, las fotos sin requerir lo dicen
+  const huboReq = (anteriores || []).concat([actual]).some(function (h) { return h.requiereRespuesta; });
   body.innerHTML = '<div class="timeline">' +
-    (anteriores && anteriores.length ? htmlItemsHist_(anteriores, null) : (avisoHtml || '')) +
-    htmlItemsHist_([actual], anteriores && anteriores.length ? anteriores[anteriores.length - 1] : null) +
+    (anteriores && anteriores.length ? htmlItemsHist_(anteriores, null, huboReq) : (avisoHtml || '')) +
+    htmlItemsHist_([actual], anteriores && anteriores.length ? anteriores[anteriores.length - 1] : null, huboReq) +
     '</div>';
 }
 
