@@ -3,8 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra v6.1.2</title>
+<title>LibroObra v6.1.3</title>
 <!--
+  index_libroobra_v6_1_3.html — LibroObra v6.1.3 (06-oct-2026)
+  Backend: gas_libroobra_v6_1_2.gs (SIN CAMBIOS en esta versión).
+
+  QUÉ CAMBIÓ EN v6.1.3 (respecto a v6.1.2) — diseño cerrado el 06-oct:
+   - Pestaña nueva "Conexiones" (Inicio · Comunicaciones · Buscar ·
+     Conexiones · Hitos): grafo estilo Obsidian reusado de BDC v6.0.0
+     (d3-force), armado con los datos en memoria (sin backend). Modos
+     Vínculos (Responde a = línea llena, Referencia = punteada, con
+     flecha) · Etiquetas · Hashtags. Nodo con color del tipo, tamaño por
+     conexiones, anillo del semáforo si está pendiente, gris si está
+     anulado; clic → Ver/Editar. "Mostrar sueltos". Buscador (tipo y
+     número, asunto, etiqueta/hashtag): centra, titila 3 s y queda
+     resaltado con el resto atenuado hasta clic en el lienzo, ✕ o una
+     búsqueda nueva.
+   - Buscar y Conexiones: botón "↻ Actualizar" (recarga los datos sin F5;
+     en Buscar repite la búsqueda).
+   - Aviso rojo de lectura de PDF: muestra el motivo real (p. ej. falta
+     autorizar Documentos de Google, con el paso para resolverlo).
+
+  (historia anterior)
   index_libroobra_v6_1_2.html — LibroObra v6.1.2 (06-oct-2026)
   Backend: gas_libroobra_v6_1_2.gs (misma API_URL: publicar como Nueva versión
   de la implementación actual).
@@ -819,6 +839,51 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 .texto-linea.ok { color: #166534; }
 .texto-linea.error { color: #991b1b; }
 
+/* ══════════════════════════════════════════════
+   v6.1.3 — CONEXIONES (grafo, reusado de BDC v6.0.0)
+══════════════════════════════════════════════ */
+.grafo-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.grafo-modos button { padding: 6px 14px; font-size: .78rem; }
+.grafo-modos button.activo { background: var(--accent); color: #fff; }
+.grafo-buscar { position: relative; display: flex; align-items: center; gap: 6px; }
+.grafo-buscar .form-control { width: 240px; padding: 6px 28px 6px 10px; font-size: .8rem; }
+.grafo-limpiar { position: absolute; right: 44px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; border: none; background: transparent; color: var(--muted); font-size: 1rem; line-height: 1; border-radius: 50%; }
+.grafo-limpiar:hover { background: var(--border); color: var(--text); }
+.grafo-zoom { display: flex; gap: 4px; margin-left: auto; }
+.grafo-leyenda { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font-size: .7rem; color: var(--muted); margin-bottom: 10px; }
+.grafo-leyenda > span { display: inline-flex; align-items: center; gap: 5px; }
+.ley-linea { display: inline-block; width: 22px; border-top: 2px solid #475569; }
+.ley-linea.punteada { border-top: 2px dashed #94a3b8; margin-left: 8px; }
+.ley-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+.ley-anillo { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 2.5px solid; }
+.ley-ayuda { font-style: italic; }
+.grafo-lienzo { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-md); overflow: hidden; }
+#grafo-viewport { position: relative; height: calc(100vh - 260px); min-height: 380px; cursor: grab; touch-action: none; }
+#grafo-svg { width: 100%; height: 100%; display: block; }
+.grafo-vacio { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 40px; font-size: .85rem; color: var(--muted); line-height: 1.7; }
+.grafo-link { stroke: #cbd5e1; stroke-width: 1.4px; transition: opacity .2s; }
+.grafo-link.responde { stroke: #475569; stroke-width: 1.6px; }
+.grafo-link.referencia { stroke: #94a3b8; stroke-dasharray: 5 4; }
+.grafo-nodo { cursor: pointer; transition: opacity .2s; }
+.grafo-circulo { stroke: rgba(255,255,255,.8); stroke-width: 1.5px; transition: stroke-width .1s; }
+.grafo-nodo:hover .grafo-circulo { stroke: var(--text); stroke-width: 2.5px; }
+.grafo-sem { fill: none; stroke-width: 3px; }
+.grafo-texto { font-family: 'DM Sans', sans-serif; font-size: 10.5px; font-weight: 600; fill: var(--text); pointer-events: none; transition: opacity .2s; }
+.grafo-texto.hub { font-weight: 700; fill: #5b21b6; }
+.grafo-texto.anulado { fill: #94a3b8; text-decoration: line-through; }
+/* resaltado (búsqueda / clic en etiqueta): el resto se atenúa */
+#grafo-svg.con-resaltado .grafo-nodo:not(.resaltado), #grafo-svg.con-resaltado .grafo-texto:not(.resaltado) { opacity: .15; }
+#grafo-svg.con-resaltado .grafo-link:not(.resaltado) { opacity: .08; }
+.grafo-nodo.resaltado .grafo-circulo { stroke: #0f172a; stroke-width: 4px; }
+@keyframes grafo-titila { 0%, 100% { opacity: 1; } 50% { opacity: .2; } }
+.grafo-nodo.titila .grafo-circulo { animation: grafo-titila .5s ease-in-out 6; }
+@media (max-width: 640px) {
+  .grafo-buscar .form-control { width: 170px; }
+  .grafo-zoom { margin-left: 0; }
+  .grafo-leyenda > .ley-ayuda { display: none; }
+  #grafo-viewport { height: calc(100vh - 330px); min-height: 320px; }
+}
+
 /* Historial: cambios anteriores cargando (v6.0.2) */
 .tl-cargando { display: flex; align-items: center; gap: 8px; font-size: .75rem; color: var(--muted); padding: 2px 0 14px 6px; }
 .tl-cargando .btn-mini-spin { flex-shrink: 0; }
@@ -841,7 +906,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   <div class="caja">
     <span class="caja-emoji">📋</span>
     <div class="caja-logo">LibroObra</div>
-    <div class="caja-version" id="version-login">v6.1.2</div>
+    <div class="caja-version" id="version-login">v6.1.3</div>
     <div class="caja-sub">Registro de comunicaciones de obra</div>
 
     <div id="paso-email" class="login-paso activo">
@@ -897,6 +962,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
       <button class="hdr-nav-btn active" id="nav-inicio" onclick="showSection('inicio')" disabled>Inicio</button>
       <button class="hdr-nav-btn" id="nav-comunicaciones" onclick="showSection('comunicaciones')" disabled>Comunicaciones</button>
       <button class="hdr-nav-btn" id="nav-buscar" onclick="showSection('buscar')" disabled>Buscar</button>
+      <button class="hdr-nav-btn" id="nav-conexiones" onclick="showSection('conexiones')" disabled>Conexiones</button>
       <button class="hdr-nav-btn" id="nav-hitos" onclick="showSection('hitos')" disabled>Hitos</button>
       <a class="hdr-nav-guia" href="./instructivo_libroobra.html" target="_blank" rel="noopener">Guía ↗</a>
     </nav>
@@ -906,7 +972,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <button class="hdr-btn" id="btn-cambiar-obra" onclick="cambiarObra()">Cambiar obra</button>
     <button class="hdr-btn hdr-btn-instalar hidden" id="btn-instalar">Instalar</button>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version" id="version-app">v6.1.2</span>
+    <span class="hdr-version" id="version-app">v6.1.3</span>
     <button class="hdr-btn" onclick="confirmarCerrarSesion()">Salir</button>
   </header>
 
@@ -1033,6 +1099,9 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <section id="sec-buscar" class="section">
       <div class="sec-header">
         <div class="sec-title"><div class="sec-title-dot"></div>Buscar</div>
+        <div class="sec-actions">
+          <button class="btn btn-secondary btn-sm btn-actualizar" onclick="actualizarBuscar()">↻ Actualizar</button>
+        </div>
       </div>
       <div class="card busq-card">
         <div class="busq-barra">
@@ -1052,6 +1121,47 @@ textarea.form-control { resize: vertical; min-height: 66px; }
       </div>
       <div class="busq-estado" id="busq-estado"></div>
       <div id="busq-resultados"></div>
+    </section>
+
+    <!-- ── CONEXIONES (v6.1.3) ── -->
+    <section id="sec-conexiones" class="section">
+      <div class="sec-header">
+        <div class="sec-title"><div class="sec-title-dot"></div>Conexiones</div>
+        <div class="sec-actions">
+          <button class="btn btn-secondary btn-sm btn-actualizar" onclick="recargarDatosObra()">↻ Actualizar</button>
+        </div>
+      </div>
+      <div class="grafo-toolbar">
+        <div class="seg grafo-modos" id="grafo-modos">
+          <button type="button" data-modo="vinculos" onclick="cambiarModoGrafo('vinculos')">Vínculos</button>
+          <button type="button" data-modo="etiquetas" onclick="cambiarModoGrafo('etiquetas')">Etiquetas</button>
+          <button type="button" data-modo="hashtags" onclick="cambiarModoGrafo('hashtags')">Hashtags</button>
+        </div>
+        <button class="filtro-btn" id="grafo-sueltos" onclick="toggleSueltosGrafo()" title="Incluir los documentos sin ningún vínculo">Mostrar sueltos</button>
+        <div class="grafo-buscar">
+          <input type="text" id="grafo-input" class="form-control" placeholder="Buscar: np 3, asunto, #hashtag…" autocomplete="off" maxlength="100">
+          <button type="button" class="grafo-limpiar hidden" id="grafo-limpiar" title="Limpiar" onclick="limpiarBusquedaGrafo()">×</button>
+          <button type="button" class="btn btn-secondary btn-sm" title="Buscar" onclick="buscarEnGrafo()">🔍</button>
+        </div>
+        <div class="grafo-zoom">
+          <button type="button" class="btn btn-secondary btn-sm" title="Acercar" onclick="grafoZoom(1.3)">+</button>
+          <button type="button" class="btn btn-secondary btn-sm" title="Alejar" onclick="grafoZoom(1 / 1.3)">−</button>
+          <button type="button" class="btn btn-secondary btn-sm" title="Encuadrar todo" onclick="grafoReset()">Encuadrar</button>
+        </div>
+      </div>
+      <div class="grafo-leyenda">
+        <span id="grafo-leyenda-vinc"><span class="ley-linea"></span>Responde a <span class="ley-linea punteada"></span>Referencia</span>
+        <span id="grafo-leyenda-hub" class="hidden"><span class="ley-dot" id="grafo-leyenda-hub-dot"></span><span id="grafo-leyenda-hub-txt">Etiqueta</span></span>
+        <span><span class="ley-anillo" style="border-color:#16a34a"></span><span class="ley-anillo" style="border-color:#eab308"></span><span class="ley-anillo" style="border-color:#dc2626"></span>Pendiente de respuesta</span>
+        <span><span class="ley-dot" style="background:#cbd5e1"></span>Anulado</span>
+        <span class="ley-ayuda">Arrastrá para mover · rueda o pellizco para el zoom · clic en un documento para abrirlo</span>
+      </div>
+      <div class="grafo-lienzo">
+        <div id="grafo-viewport">
+          <svg id="grafo-svg"></svg>
+          <div id="grafo-vacio" class="grafo-vacio hidden"></div>
+        </div>
+      </div>
     </section>
 
     <!-- ── HITOS ── -->
@@ -1389,7 +1499,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 // ══════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════
-const APP_VERSION = 'v6.1.2';
+const APP_VERSION = 'v6.1.3';
 const API_URL = 'https://script.google.com/macros/s/AKfycbxDN2F_K6z4wQXDJAyyZ6EdoSqoQgHv8d8f7gXGo-QYdke3DXW6hvZtEnmEy9xFpjTO/exec';
 const SESION_KEY = 'lo_sesion';
 const OBRA_KEY = 'lo_obra_actual';
@@ -1604,6 +1714,7 @@ function vinculosDe(id) {
   return out;
 }
 function upsertVinculos(lista) {
+  marcarDatosCambiados();   // v6.1.3 — el grafo se rearma la próxima vez que se mire
   (lista || []).forEach(function (v) {
     const i = estado.vinculos.findIndex(function (x) { return x.idVinculo === v.idVinculo; });
     if (v.estado === 'Inactivo') { if (i >= 0) estado.vinculos.splice(i, 1); return; }
@@ -2119,6 +2230,12 @@ function resetDatosObra() {
   if (estado.dtHitos) { estado.dtHitos.destroy(); estado.dtHitos = null; }
   estado.comunicaciones = []; estado.vinculos = []; estado.hitos = []; estado.tipos = []; estado.etiquetas = [];
   estado.dashboard = null; estado.datosListos = false;
+  // v6.1.3 — el grafo es de la obra anterior
+  marcarDatosCambiados();
+  if (grafo.sim) { grafo.sim.stop(); grafo.sim = null; }
+  grafo.svg = null; grafo.nodosSim = []; grafo.firma = '';
+  document.getElementById('grafo-svg').innerHTML = '';
+  document.getElementById('grafo-input').value = '';
   estado.filtroTipo = 'todos'; estado.filtroHashtag = ''; estado.filtroPendientes = false;
   estado.puedeEditar = false; estado.perfil = '';
   estado.dashEsCopiaLocal = false; estado.dashFalloRecalc = false;
@@ -2159,7 +2276,7 @@ function pintarHeaderObra() {
 }
 
 function habilitarNav(on) {
-  ['nav-inicio', 'nav-comunicaciones', 'nav-buscar', 'nav-hitos'].forEach(function (id) {
+  ['nav-inicio', 'nav-comunicaciones', 'nav-buscar', 'nav-conexiones', 'nav-hitos'].forEach(function (id) {
     const b = document.getElementById(id);
     b.disabled = !on;
     b.title = on ? '' : 'Cargando datos…';
@@ -2215,6 +2332,7 @@ async function cargarDatosObra(recarga) {
     estado.hitos = pes.hitos || [];
     estado.tipos = pes.tipos || [];
     estado.etiquetas = pes.etiquetas || [];
+    marcarDatosCambiados();   // v6.1.3
     if (pes.dashboard) {
       estado.dashboard = pes.dashboard;
       estado.dashEsCopiaLocal = false;
@@ -2284,6 +2402,7 @@ function showSection(id, forzar) {
   if (id === 'comunicaciones' && estado.datosListos) renderComunicaciones();
   if (id === 'hitos' && estado.datosListos) renderHitos();
   if (id === 'buscar' && estado.datosListos) renderBuscar();   // v6.1.2
+  if (id === 'conexiones' && estado.datosListos) renderConexiones();   // v6.1.3
 }
 
 // ══════════════════════════════════════════════
@@ -2902,6 +3021,7 @@ document.getElementById('tbody-com').addEventListener('click', function (e) {
 function upsertComunicacion(c) { upsertComunicaciones([c]); }
 /** v6.1.0 — varias de una vez (alta + destinos que pasaron a Respondida): un solo redibujo. */
 function upsertComunicaciones(lista) {
+  marcarDatosCambiados();   // v6.1.3
   let hayNueva = false;
   (lista || []).forEach(function (c) {
     if (!c) return;
@@ -3699,6 +3819,15 @@ function refrescarTextoUI(id) {
   if (estado.seccion === 'buscar') pintarNotaBuscar();
 }
 /** Pide al backend leer el PDF. reintentar=true = "Leer ahora" (también desde Error). Se ve en el panel de tareas. */
+/** v6.1.3 — Motivo legible de una falla de lectura (el texto crudo viene del backend). */
+function motivoLecturaPdf(msg) {
+  const m = String(msg || '');
+  if (/auth\/documents|DocumentApp/i.test(m) && /permis/i.test(m)) return 'falta autorizar Documentos de Google. En el editor de Apps Script, ejecutá LO_triggerIndexadoNocturno y aceptá los permisos.';
+  if (/auth\/drive/i.test(m) && /permis/i.test(m)) return 'falta autorizar Google Drive. En el editor de Apps Script, ejecutá LO_triggerIndexadoNocturno y aceptá los permisos.';
+  if (/Drive is not defined|Drive no est/i.test(m)) return 'falta el servicio avanzado Drive API en el proyecto de Apps Script (Servicios → Drive API).';
+  if (/Ya fall/i.test(m)) return m;
+  return m.length > 180 ? m.slice(0, 177) + '…' : m;
+}
 async function indexarEnFondo(id, reintentar) {
   if (_indexando[id] || !estado.obra) return;
   const obraId = estado.obra.obraId;
@@ -3715,7 +3844,8 @@ async function indexarEnFondo(id, reintentar) {
     if (r.comunicacion) upsertComunicacion(r.comunicacion);
     if (r.estadoTexto === 'Indexado') tareaOk(clave, 'PDF de ' + desc + ' leído: ya se puede buscar');
     else if (r.estadoTexto === 'Vacio') tareaOk(clave, desc + ': el adjunto no tiene texto para leer');
-    else tareaError(clave, 'No se pudo leer el PDF de ' + desc + (r.estadoTexto === 'Error' ? ' (falló 3 veces).' : '. Se reintenta a las 3 hs.'),
+    else tareaError(clave, 'No se pudo leer el PDF de ' + desc + (r.estadoTexto === 'Error' ? ' (falló 3 veces).' : '. Se reintenta a las 3 hs.') +
+      (r.errorTexto ? ' Motivo: ' + motivoLecturaPdf(r.errorTexto) : ''),   // v6.1.3 — el motivo real
       [{ texto: 'Reintentar', fn: reintentarFn, primario: true }]);
   } catch (err) {
     if (otra()) { tareaQuitar(clave); return; }
@@ -3795,6 +3925,12 @@ async function ejecutarBusqueda() {
     if (tok === b.token) { b.cargando = false; pintarResultadosBusq(); }
   }
 }
+/** v6.1.3 — ↻ Actualizar en Buscar: recarga los datos de la obra (sin F5) y repite la búsqueda si hay una. */
+async function actualizarBuscar() {
+  if (estado.cargando) return;
+  await cargarDatosObra(true);
+  if (estado.datosListos && estado.busq.termino && estado.seccion === 'buscar') ejecutarBusqueda();
+}
 document.getElementById('busq-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); ejecutarBusqueda(); } });
 
 function htmlFragmento(f) {
@@ -3840,6 +3976,294 @@ document.getElementById('busq-resultados').addEventListener('click', function (e
   const id = v.closest('.busq-res').dataset.id;
   if (!comPorId(id)) { mostrarToast('Ese documento no está en memoria: tocá ↻ Actualizar en Comunicaciones'); return; }
   abrirModalEditar(id);
+});
+
+// ══════════════════════════════════════════════
+// v6.1.3 — PESTAÑA CONEXIONES (grafo estilo Obsidian, reusado de BDC v6.0.0)
+// ══════════════════════════════════════════════
+// Mismo motor que BDC (inicializarGrafoD3 / ajustarZoomAFitGrafo /
+// buscarEnGrafo): d3-force, zoom-to-fit UNA vez al asentarse, capa de
+// textos aparte para que ningún círculo tape un nombre, arrastre de nodos.
+// Diferencias acordadas el 06-oct:
+//  - Los datos salen de la MEMORIA (comunicaciones + vínculos): no hay
+//    llamada al backend.
+//  - 3 modos: Vínculos (documento → documento: "Responde a" línea llena,
+//    "Referencia" punteada, con flecha) · Etiquetas · Hashtags (bipartito,
+//    como el modo etiquetas de BDC).
+//  - Nodo: color del tipo, tamaño por conexiones, "NP 0001" siempre
+//    visible (nombres cortos), anillo del semáforo si está pendiente de
+//    respuesta, gris si está anulado. Clic → Ver/Editar (en vez del panel
+//    lateral de BDC). Clic en una etiqueta/hashtag → resalta sus documentos.
+//  - "Mostrar sueltos" (solo en Vínculos).
+//  - Búsqueda opción C: centra el primero, TITILA 3 s y queda con anillo
+//    fijo + el resto atenuado, hasta clic en el lienzo vacío, ✕ o búsqueda nueva.
+const GRAFO_RADIO_BASE = 9;      // = BDC
+const GRAFO_RADIO_ESCALA = 6;    // = BDC (sqrt de las conexiones)
+const GRAFO_COLOR_HUB = { etiquetas: '#7c3aed', hashtags: '#c026d3' };   // violeta (BDC) / fucsia para diferenciar
+const GRAFO_COLOR_ANULADO = '#cbd5e1';
+const GRAFO_SEM_COLOR = { 'sem-verde': '#16a34a', 'sem-amarillo': '#eab308', 'sem-rojo': '#dc2626', 'sem-sin': '#94a3b8' };
+const GRAFO_TITILA_MS = 3000;
+
+const grafo = {
+  modo: 'vinculos', sueltos: false,
+  svg: null, zoomG: null, zoom: null, sim: null,
+  nodos: [], edges: [], nodosSim: [],
+  yaEncuadro: false, firma: '',
+  resaltados: [], titilaTimer: null
+};
+let _datosVer = 0;   // sube con cada cambio de datos en memoria → el grafo sabe cuándo rearmarse
+function marcarDatosCambiados() { _datosVer++; }
+
+function renderConexiones(forzar) {
+  pintarControlesGrafo();
+  const firma = [_datosVer, grafo.modo, grafo.sueltos, estado.obra ? estado.obra.obraId : ''].join('|');
+  if (!forzar && grafo.firma === firma && grafo.svg) return;   // mismo grafo: se conserva zoom y posición
+  grafo.firma = firma;
+  armarDatosGrafo();
+  dibujarGrafo();
+}
+function pintarControlesGrafo() {
+  document.querySelectorAll('#grafo-modos [data-modo]').forEach(function (b) { b.classList.toggle('activo', b.dataset.modo === grafo.modo); });
+  const s = document.getElementById('grafo-sueltos');
+  s.classList.toggle('activo-todos', grafo.sueltos);
+  s.classList.toggle('hidden', grafo.modo !== 'vinculos');
+  document.getElementById('grafo-leyenda-vinc').classList.toggle('hidden', grafo.modo !== 'vinculos');
+  document.getElementById('grafo-leyenda-hub').classList.toggle('hidden', grafo.modo === 'vinculos');
+  document.getElementById('grafo-leyenda-hub-txt').textContent = grafo.modo === 'etiquetas' ? 'Etiqueta' : 'Hashtag';
+  document.getElementById('grafo-leyenda-hub-dot').style.background = GRAFO_COLOR_HUB[grafo.modo] || '';
+}
+function cambiarModoGrafo(modo) {
+  if (modo === grafo.modo) return;
+  grafo.modo = modo;
+  limpiarBusquedaGrafo();
+  renderConexiones();
+}
+function toggleSueltosGrafo() { grafo.sueltos = !grafo.sueltos; limpiarBusquedaGrafo(); renderConexiones(); }
+
+/** Nodos y aristas desde la memoria, según el modo. */
+function armarDatosGrafo() {
+  const coms = estado.comunicaciones;
+  const porId = {};
+  coms.forEach(function (c) { porId[c.id] = c; });
+  const edges = [];
+  const hubs = {};
+  if (grafo.modo === 'vinculos') {
+    estado.vinculos.forEach(function (v) {
+      if (v.estado === 'Inactivo' || !porId[v.idOrigen] || !porId[v.idDestino]) return;
+      edges.push({ origen: v.idOrigen, destino: v.idDestino, tipo: v.tipo === VINC_RESPONDE ? 'responde' : 'referencia' });
+    });
+  } else {
+    coms.forEach(function (c) {
+      const lista = grafo.modo === 'etiquetas'
+        ? String(c.etiquetas || '').split(',').map(function (e) { return e.trim(); }).filter(Boolean)
+        : String(c.hashtags || '').split(/\s+/).filter(Boolean);
+      lista.forEach(function (nombre) {
+        const id = 'hub:' + nombre;
+        hubs[id] = nombre;
+        edges.push({ origen: c.id, destino: id, tipo: 'hub' });
+      });
+    });
+  }
+  const cuenta = {};
+  edges.forEach(function (e) { cuenta[e.origen] = (cuenta[e.origen] || 0) + 1; cuenta[e.destino] = (cuenta[e.destino] || 0) + 1; });
+  const nodos = coms
+    .filter(function (c) { return cuenta[c.id] || (grafo.modo === 'vinculos' && grafo.sueltos); })
+    .map(function (c) {
+      return { id: c.id, tipo: 'doc', nombre: c.tipo + ' ' + c.numero, tipoDoc: c.tipo, asunto: c.asunto, anulado: c.estado === 'Anulado', conexiones: cuenta[c.id] || 0 };
+    });
+  Object.keys(hubs).forEach(function (id) { nodos.push({ id: id, tipo: 'hub', nombre: hubs[id], conexiones: cuenta[id] || 0 }); });
+  grafo.nodos = nodos;
+  grafo.edges = edges;
+}
+
+function dibujarGrafo() {
+  const svgEl = document.getElementById('grafo-svg');
+  const vacio = document.getElementById('grafo-vacio');
+  if (grafo.sim) { grafo.sim.stop(); grafo.sim = null; }
+  svgEl.innerHTML = '';
+  grafo.svg = null; grafo.nodosSim = []; grafo.yaEncuadro = false;
+  const conDocs = grafo.nodos.some(function (n) { return n.tipo === 'doc'; });
+  if (!grafo.nodos.length || (!grafo.edges.length && !conDocs)) {
+    vacio.innerHTML = grafo.modo === 'vinculos'
+      ? 'Todavía no hay vínculos entre documentos.<br>Se crean con "Responde a" o "Referencias" en el alta, o con "+ Vincular" en Ver/Editar.' +
+        (estado.comunicaciones.length ? '<br>Tocá <b>Mostrar sueltos</b> para ver todos los documentos.' : '')
+      : (grafo.modo === 'etiquetas' ? 'Ningún documento tiene etiquetas todavía.' : 'Ningún documento tiene hashtags todavía.');
+    vacio.classList.remove('hidden');
+    svgEl.style.display = 'none';
+    return;
+  }
+  vacio.classList.add('hidden');
+  svgEl.style.display = 'block';
+
+  const viewport = document.getElementById('grafo-viewport');
+  const ancho = viewport.clientWidth || 800, alto = viewport.clientHeight || 600;
+  const nodosSim = grafo.nodos.map(function (n) { return Object.assign({}, n); });
+  nodosSim.forEach(function (n) { n.__r = GRAFO_RADIO_BASE + GRAFO_RADIO_ESCALA * Math.sqrt(n.conexiones || 0); });
+  grafo.nodosSim = nodosSim;
+  const edgesSim = grafo.edges.map(function (e) { return { source: e.origen, target: e.destino, tipo: e.tipo }; });
+
+  grafo.svg = d3.select(svgEl);
+  // flechas: una por tipo de vínculo (el color sigue a la línea)
+  const defs = grafo.svg.append('defs');
+  [['responde', '#475569'], ['referencia', '#94a3b8']].forEach(function (m) {
+    defs.append('marker').attr('id', 'grafo-flecha-' + m[0]).attr('viewBox', '0 -5 10 10').attr('refX', 9).attr('refY', 0)
+      .attr('markerWidth', 7).attr('markerHeight', 7).attr('orient', 'auto')
+      .append('path').attr('d', 'M0,-5L10,0L0,5').attr('fill', m[1]);
+  });
+  grafo.zoomG = grafo.svg.append('g');
+  const gLinks = grafo.zoomG.append('g');
+  const gNodes = grafo.zoomG.append('g');
+  const gLabels = grafo.zoomG.append('g');   // capa aparte, siempre arriba (fix BDC v4.1.0)
+
+  const linkSel = gLinks.selectAll('line').data(edgesSim).enter().append('line')
+    .attr('class', function (d) { return 'grafo-link ' + d.tipo; })
+    .attr('marker-end', function (d) { return d.tipo === 'hub' ? null : 'url(#grafo-flecha-' + d.tipo + ')'; });
+
+  const nodeSel = gNodes.selectAll('g').data(nodosSim, function (d) { return d.id; }).enter().append('g')
+    .attr('class', 'grafo-nodo')
+    .on('click', function (event, d) { event.stopPropagation(); clicNodoGrafo(d); });
+  nodeSel.append('title').text(function (d) {
+    if (d.tipo === 'hub') return (grafo.modo === 'etiquetas' ? 'Etiqueta: ' : 'Hashtag: ') + d.nombre + ' · ' + d.conexiones + (d.conexiones === 1 ? ' documento' : ' documentos');
+    const c = comPorId(d.id), s = c ? semaforo(c) : null;
+    return d.nombre + ' — ' + (d.asunto || '') + (d.anulado ? ' · ANULADO' : '') + (s && s.cls !== 'sem-ok' ? ' · ' + s.titulo : '') + '\nClic: abrir el documento';
+  });
+  // anillo del semáforo (solo pendientes de respuesta)
+  nodeSel.filter(function (d) { return d.tipo === 'doc' && !d.anulado; }).each(function (d) {
+    const c = comPorId(d.id);
+    const s = c && esPendiente(c) ? semaforo(c) : null;
+    if (s && GRAFO_SEM_COLOR[s.cls]) d3.select(this).append('circle').attr('class', 'grafo-sem').attr('r', d.__r + 4).attr('stroke', GRAFO_SEM_COLOR[s.cls]);
+  });
+  nodeSel.append('circle').attr('class', 'grafo-circulo').attr('r', function (d) { return d.__r; })
+    .attr('fill', function (d) {
+      if (d.tipo === 'hub') return GRAFO_COLOR_HUB[grafo.modo];
+      return d.anulado ? GRAFO_COLOR_ANULADO : colorTipo(d.tipoDoc).base;
+    });
+  const labelSel = gLabels.selectAll('text').data(nodosSim, function (d) { return d.id; }).enter().append('text')
+    .attr('class', function (d) { return 'grafo-texto' + (d.tipo === 'hub' ? ' hub' : '') + (d.anulado ? ' anulado' : ''); })
+    .text(function (d) { return d.nombre.length > 28 ? d.nombre.slice(0, 27) + '…' : d.nombre; });
+
+  nodeSel.call(d3.drag()
+    .on('start', function (event, d) { if (!event.active) grafo.sim.alphaTarget(0.25).restart(); d.fx = d.x; d.fy = d.y; })
+    .on('drag', function (event, d) { d.fx = event.x; d.fy = event.y; })
+    .on('end', function (event, d) { if (!event.active) grafo.sim.alphaTarget(0); d.fx = null; d.fy = null; }));
+
+  // fuerzas = BDC v4.1.0 (repulsión fuerte, collide x3, centrado muy suave)
+  grafo.sim = d3.forceSimulation(nodosSim)
+    .force('link', d3.forceLink(edgesSim).id(function (d) { return d.id; }).distance(90))
+    .force('charge', d3.forceManyBody().strength(-450))
+    .force('collide', d3.forceCollide().radius(function (d) { return d.__r + 24; }).iterations(3))
+    .force('x', d3.forceX(ancho / 2).strength(0.025))
+    .force('y', d3.forceY(alto / 2).strength(0.025))
+    .on('tick', function () {
+      // la línea termina en el BORDE del círculo destino, así la flecha se ve
+      linkSel.each(function (d) {
+        const dx = d.target.x - d.source.x, dy = d.target.y - d.source.y, len = Math.sqrt(dx * dx + dy * dy) || 1;
+        const recorte = d.tipo === 'hub' ? 0 : d.target.__r + 3;
+        d3.select(this).attr('x1', d.source.x).attr('y1', d.source.y)
+          .attr('x2', d.target.x - dx / len * recorte).attr('y2', d.target.y - dy / len * recorte);
+      });
+      nodeSel.attr('transform', function (d) { return 'translate(' + d.x + ',' + d.y + ')'; });
+      labelSel.attr('x', function (d) { return d.x + d.__r + 4; }).attr('y', function (d) { return d.y + 3; });
+    })
+    .on('end', function () {
+      if (grafo.yaEncuadro) return;   // fix BDC v4.1.1: encuadrar UNA sola vez
+      grafo.yaEncuadro = true;
+      ajustarZoomAFitGrafo();
+    });
+
+  grafo.zoom = d3.zoom().scaleExtent([0.15, 3])
+    .filter(function (event) { return !event.ctrlKey && !event.button || event.type === 'wheel'; })
+    .on('zoom', function (event) { grafo.zoomG.attr('transform', event.transform); });
+  grafo.svg.call(grafo.zoom);
+  grafo.svg.on('click', function () { quitarResaltadoGrafo(); });   // clic en el lienzo vacío
+}
+
+function ajustarZoomAFitGrafo() {   // = BDC
+  const ns = grafo.nodosSim;
+  if (!ns.length || !grafo.svg) return;
+  const viewport = document.getElementById('grafo-viewport');
+  const ancho = viewport.clientWidth || 800, alto = viewport.clientHeight || 600;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  ns.forEach(function (d) { minX = Math.min(minX, d.x - d.__r); maxX = Math.max(maxX, d.x + d.__r + 60); minY = Math.min(minY, d.y - d.__r); maxY = Math.max(maxY, d.y + d.__r); });
+  const M = 50;
+  const escala = Math.min(1.4, Math.min(ancho / Math.max(1, maxX - minX + M * 2), alto / Math.max(1, maxY - minY + M * 2)));
+  const t = d3.zoomIdentity.translate(ancho / 2, alto / 2).scale(escala).translate(-(minX + maxX) / 2, -(minY + maxY) / 2);
+  grafo.svg.transition().duration(400).call(grafo.zoom.transform, t);
+}
+function grafoZoom(f) { if (grafo.svg) grafo.svg.transition().duration(150).call(grafo.zoom.scaleBy, f); }
+function grafoReset() { quitarResaltadoGrafo(); ajustarZoomAFitGrafo(); }
+
+function clicNodoGrafo(d) {
+  if (d.tipo === 'hub') {   // etiqueta / hashtag: resalta sus documentos (sin titilar)
+    const ids = [d.id];
+    grafo.edges.forEach(function (e) { if (e.destino === d.id) ids.push(e.origen); });
+    resaltarGrafo(ids, false);
+    return;
+  }
+  abrirModalEditar(d.id);
+}
+
+// ── Búsqueda dentro del grafo (opción C) ──
+function actualizarBtnLimpiarGrafo() {
+  document.getElementById('grafo-limpiar').classList.toggle('hidden', !document.getElementById('grafo-input').value);
+}
+function limpiarBusquedaGrafo() {
+  document.getElementById('grafo-input').value = '';
+  actualizarBtnLimpiarGrafo();
+  quitarResaltadoGrafo();
+}
+function buscarEnGrafo() {
+  const q = document.getElementById('grafo-input').value.trim();
+  if (!q || !grafo.nodosSim.length || !grafo.svg) return;
+  const tokens = _tokens(q), qn = _normTxt(q);
+  const matches = grafo.nodosSim.filter(function (n) {
+    if (n.tipo === 'hub') return _normTxt(n.nombre).indexOf(qn) !== -1 || _normTxt(n.nombre.replace(/^#/, '')).indexOf(qn.replace(/^#/, '')) !== -1;
+    const c = comPorId(n.id);
+    return !!c && _coincide(c, tokens);   // tipo + número ("np 1" = NP 0001) y asunto, igual que el selector de vínculos
+  });
+  if (!matches.length) { quitarResaltadoGrafo(); mostrarToast('Sin coincidencias'); return; }
+  // centra el PRIMERO sin cambiar el zoom (= BDC)
+  const viewport = document.getElementById('grafo-viewport');
+  const k = d3.zoomTransform(grafo.svg.node()).k;
+  const p = matches[0];
+  grafo.svg.transition().duration(400).call(grafo.zoom.transform,
+    d3.zoomIdentity.translate((viewport.clientWidth || 800) / 2, (viewport.clientHeight || 600) / 2).scale(k).translate(-p.x, -p.y));
+  resaltarGrafo(matches.map(function (m) { return m.id; }), true);
+}
+/** Resalta ids: el resto se atenúa; con titilar, 3 s de parpadeo y después anillo fijo. */
+function resaltarGrafo(ids, titilar) {
+  quitarResaltadoGrafo();
+  if (!grafo.svg) return;
+  grafo.resaltados = ids.slice();
+  const set = {};
+  ids.forEach(function (id) { set[id] = true; });
+  const conId = function (d) { return d.source ? (set[d.source.id] && set[d.target.id]) : set[d.id]; };
+  grafo.svg.classed('con-resaltado', true);
+  grafo.svg.selectAll('.grafo-nodo').classed('resaltado', function (d) { return !!set[d.id]; }).classed('titila', function (d) { return titilar && !!set[d.id]; });
+  grafo.svg.selectAll('.grafo-texto').classed('resaltado', function (d) { return !!set[d.id]; });
+  grafo.svg.selectAll('.grafo-link').classed('resaltado', function (d) {
+    // en búsqueda: también las aristas que tocan a un resaltado (se ve con qué está conectado)
+    return conId(d) || (!titilar ? false : (set[d.source.id] || set[d.target.id]));
+  });
+  if (titilar) grafo.titilaTimer = setTimeout(function () {
+    grafo.titilaTimer = null;
+    if (grafo.svg) grafo.svg.selectAll('.grafo-nodo.titila').classed('titila', false);   // queda el anillo fijo
+  }, GRAFO_TITILA_MS);
+}
+function quitarResaltadoGrafo() {
+  if (grafo.titilaTimer) { clearTimeout(grafo.titilaTimer); grafo.titilaTimer = null; }
+  grafo.resaltados = [];
+  if (!grafo.svg) return;
+  grafo.svg.classed('con-resaltado', false);
+  grafo.svg.selectAll('.resaltado').classed('resaltado', false);
+  grafo.svg.selectAll('.titila').classed('titila', false);
+}
+document.getElementById('grafo-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); buscarEnGrafo(); } });
+document.getElementById('grafo-input').addEventListener('input', actualizarBtnLimpiarGrafo);
+let _grafoResizeTimer = null;
+window.addEventListener('resize', function () {
+  clearTimeout(_grafoResizeTimer);
+  _grafoResizeTimer = setTimeout(function () { if (estado.seccion === 'conexiones' && grafo.svg) ajustarZoomAFitGrafo(); }, 250);
 });
 
 // ══════════════════════════════════════════════
