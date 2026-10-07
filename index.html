@@ -3,8 +3,42 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra v6.1.3</title>
+<title>LibroObra v7.0.0</title>
 <!--
+  index_libroobra_v7_0_0.html — LibroObra v7.0.0 (07-oct-2026)
+  Backend: gas_libroobra_v7_0_0.gs (publicar como Nueva versión de la
+  implementación actual: la API_URL no cambia). Nuevo: sw.js en el repo.
+  Diseño: Diseno_LibroObra_PdC_v1.1.0.md (entrega 7.0.0 "Carga").
+
+  QUÉ CAMBIÓ EN v7.0.0 (respecto a v6.1.3):
+   - Parte de Contrato (PdC), pestaña nueva "Parte de Contrato": solo para
+     el admin global y el perfil nuevo "rac" (permisos.puedePdC).
+     · Pantalla "Hoy": progreso "8 / 11 tipos", pill de sincronización,
+       días (Hoy / Ayer / fecha / incompletos hasta PDC_DIAS_ATRAS desde
+       PDC_FECHA_INICIO), un renglón por tipo con su estado; al abrirlo,
+       sus eventos del día (con 🗑 borrar) y "+ Agregar otro evento".
+     · "Completar parte": wizard de una pantalla por tipo, botones
+       grandes, "sin novedad" primero. Tipo no múltiple: tocar = registrar.
+       Múltiple: chips + Registrar ("sin novedad" desmarca los demás).
+       Observación obligatoria según el valor (fondo ámbar, no deja
+       registrar). Hora: ahora / hace 10' 30' 1 h 2 h / fecha y hora libre,
+       sin futuro; la fecha del parte sale de la hora.
+     · "Todo sin novedad" con confirmación (solo tipos sin eventos).
+     · Toast de 6 s con "Deshacer" (anula el grupo entero).
+     · Solo cargar y borrar (D21). Impacto y responsable los pone el
+       backend desde el catálogo (D22).
+   - Cola local-first de RegMed: se guarda al instante en el dispositivo
+     (lo_pdc_{cat|recs|queue|last}_{obraId}) y se envía en lote
+     (pdcBatch, POST, idempotente por ID); reintento 30 s, al volver la
+     red y al reabrir; pull cada 2 min acotado a PDC_DIAS_ATRAS.
+   - Celular (≤ 640 px): solo "Parte de Contrato" + "Buscar"; abre directo
+     en el PdC. "Ver documento" desde Buscar es solo lectura.
+   - Sin señal: si el dispositivo ya tiene el catálogo de la obra, la app
+     abre igual en el PdC (sesión guardada) y revalida al volver la red.
+     Un rechazo del backend no borra la cola (D20). Requiere sw.js.
+   - Perfil "rac" = administrador de su obra (edita documentos también).
+
+  (historia anterior)
   index_libroobra_v6_1_3.html — LibroObra v6.1.3 (06-oct-2026)
   Backend: gas_libroobra_v6_1_2.gs (SIN CAMBIOS en esta versión).
 
@@ -897,6 +931,130 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   .card { padding: 14px; }
   .modal-overlay { padding: 8px; }
 }
+/* ══════════════════════════════════════════════
+   v7.0.0 — PARTE DE CONTRATO (UX de RegMed, paleta de LibroObra)
+══════════════════════════════════════════════ */
+.pdc-wrap { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.pdc-cab { padding: 14px 16px; }
+.pdc-cab-fila { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.pdc-titulo { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 1px; color: var(--accent); line-height: 1.1; }
+.pdc-dia { font-size: 1.05rem; font-weight: 700; color: var(--accent2); }
+.pdc-pill { font-size: .72rem; font-weight: 600; padding: 4px 10px; border-radius: 99px; background: var(--bg); border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+.pdc-pill.ok { color: #166534; border-color: #86efac; background: #f0fdf4; }
+.pdc-pill.pend { color: #92400e; border-color: #fcd34d; background: #fffbeb; }
+.pdc-pill.err { color: #991b1b; border-color: #fecaca; background: #fef2f2; }
+.pdc-prog { display: flex; align-items: center; gap: 10px; margin: 12px 0 10px; }
+.pdc-barra { flex: 1; height: 8px; border-radius: 99px; background: var(--bg); border: 1px solid var(--border); overflow: hidden; }
+.pdc-barra i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+.pdc-barra.completo i { background: var(--success); }
+.pdc-prog-txt { font-size: .8rem; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pdc-dias { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.pdc-chip-dia { border: 1px solid var(--border); background: var(--surface); border-radius: 99px; padding: 5px 12px; font-size: .78rem; font-weight: 600; color: var(--muted); }
+.pdc-chip-dia.falta { border-color: #fca5a5; color: #991b1b; background: #fef2f2; }
+.pdc-chip-dia.on { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+.pdc-fecha-in { border: 1px solid var(--border); border-radius: 99px; padding: 4px 10px; font-size: .78rem; background: var(--surface); color: var(--text); }
+.pdc-acciones { display: grid; grid-template-columns: 1.3fr 1fr; gap: 10px; }
+.pdc-btn-grande { padding: 15px 12px; border-radius: var(--radius); font-size: .95rem; font-weight: 700; border: 1px solid var(--border); transition: transform .08s; }
+.pdc-btn-grande:active:not(:disabled) { transform: scale(.98); }
+.pdc-btn-grande.pri { background: var(--accent); border-color: var(--accent-border); color: #fff; }
+.pdc-btn-grande.sec { background: var(--surface); color: var(--accent2); }
+.pdc-btn-grande:disabled { opacity: .5; cursor: default; }
+.pdc-btn-grande.pri:disabled { background: var(--success); border-color: #15803d; opacity: .85; }
+.pdc-aviso { border-radius: var(--radius-sm); padding: 10px 12px; font-size: .8rem; line-height: 1.5; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+.pdc-aviso.err { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+.pdc-cargando { display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--muted); font-size: .85rem; padding: 30px 0; }
+.pdc-lista { display: flex; flex-direction: column; gap: 8px; }
+.pdc-tipo { background: var(--surface); border: 1px solid var(--border); border-left-width: 4px; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.pdc-tipo.pend { border-left-color: var(--accent); }
+.pdc-tipo.ok { border-left-color: var(--success); }
+.pdc-tipo-cab { width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: none; border: none; text-align: left; color: var(--text); }
+.pdc-tipo-ico { width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 700; }
+.pdc-tipo.ok .pdc-tipo-ico { background: var(--activo-bg); color: var(--activo-fg); }
+.pdc-tipo.pend .pdc-tipo-ico { background: var(--tag-bg); color: var(--tag-fg); }
+.pdc-tipo-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pdc-tipo-nombre { font-weight: 700; font-size: .9rem; }
+.pdc-tipo-estado { font-size: .76rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pdc-tipo.pend .pdc-tipo-estado { color: #b45309; font-weight: 600; }
+.pdc-chev { color: var(--muted); transition: transform .15s; font-size: 1.1rem; }
+.pdc-tipo.abierto .pdc-chev { transform: rotate(90deg); }
+.pdc-tipo-det { display: none; border-top: 1px solid var(--border); padding: 4px 14px 12px; }
+.pdc-tipo.abierto .pdc-tipo-det { display: block; }
+.pdc-ev { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px dashed var(--border); }
+.pdc-ev-hora { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 42px; font-size: .84rem; }
+.pdc-ev-txt { flex: 1; min-width: 0; font-size: .84rem; }
+.pdc-ev-obs { font-size: .74rem; color: var(--muted); font-style: italic; word-break: break-word; }
+.pdc-ev-borrar { background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 8px; font-size: .8rem; }
+.pdc-ev-borrar:hover { border-color: #fecaca; background: #fef2f2; }
+.pdc-agregar { margin-top: 10px; width: 100%; padding: 10px; border: 1px dashed var(--border); border-radius: var(--radius-sm); background: none; color: var(--accent2); font-weight: 600; font-size: .82rem; }
+.pdc-imp { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 99px; font-size: .68rem; font-weight: 700; flex-shrink: 0; }
+.pdc-imp.i0 { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+.pdc-imp.i1 { background: #fef9c3; color: #854d0e; }
+.pdc-imp.i2 { background: #ffedd5; color: #9a3412; }
+.pdc-imp.i3 { background: #fee2e2; color: #991b1b; }
+.pdc-resp { display: inline-block; font-size: .64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; border-radius: 99px; padding: 1px 7px; margin-left: 4px; background: var(--bg); color: var(--muted); }
+.pdc-resp.r-cliente { background: #dbeafe; color: #1e40af; }
+.pdc-resp.r-neutral { background: #f1f5f9; color: #475569; }
+.pdc-resp.r-propio { background: #ede9fe; color: #5b21b6; }
+.pdc-pie { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: .74rem; color: var(--muted); padding: 2px 2px 10px; }
+.pdc-pie .btn { margin-left: auto; }
+
+/* Wizard: una pantalla por tipo */
+#pdc-wiz { position: fixed; inset: 0; z-index: 520; background: rgba(15,23,42,.5); display: none; align-items: center; justify-content: center; padding: 20px; }
+#pdc-wiz.open { display: flex; }
+.wiz-caja { background: var(--surface); border-radius: var(--radius); width: 100%; max-width: 560px; max-height: 92vh; display: flex; flex-direction: column; box-shadow: var(--shadow-md); animation: fadeUp .2s ease; }
+.wiz-cab { padding: 14px 18px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 10px; }
+.wiz-paso { font-size: .64rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.wiz-tipo { font-family: 'Bebas Neue', sans-serif; font-size: 1.65rem; letter-spacing: 1px; color: var(--accent2); line-height: 1.05; }
+.wiz-ayuda { font-size: .76rem; color: var(--muted); }
+.wiz-pasos { display: flex; gap: 3px; margin-top: 8px; }
+.wiz-pasos i { flex: 1; height: 4px; border-radius: 2px; background: var(--border); }
+.wiz-pasos i.hecho { background: var(--success); }
+.wiz-pasos i.act { background: var(--accent); }
+.wiz-cuerpo { padding: 14px 18px; overflow-y: auto; flex: 1; min-height: 0; }
+.wiz-hora { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 10px 7px 12px; font-size: .82rem; margin-bottom: 12px; }
+.wiz-hora-panel { margin: -4px 0 12px; display: flex; flex-direction: column; gap: 8px; }
+.wiz-rapidos { display: flex; gap: 6px; }
+.wiz-rapidos button { flex: 1; padding: 8px 2px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); font-size: .78rem; font-weight: 600; }
+.wiz-valores { display: flex; flex-direction: column; gap: 8px; }
+.wiz-valor { width: 100%; text-align: left; padding: 13px 16px; border-radius: var(--radius); border: 2px solid var(--border); background: var(--surface); font-size: 1rem; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 10px; min-height: 54px; transition: transform .08s; }
+.wiz-valor:active { transform: scale(.985); }
+.wiz-valor.sinnov { border-color: #86efac; background: #f0fdf4; color: #166534; }
+.wiz-valor.sel { border-color: var(--accent2); background: var(--accent2); color: #fff; }
+.wiz-valor .wv-check { width: 20px; height: 20px; border-radius: 6px; border: 2px solid currentColor; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: .78rem; }
+.wiz-valor .wv-txt { flex: 1; }
+.wiz-valor .wv-meta { display: inline-flex; align-items: center; gap: 4px; font-size: .8rem; opacity: .85; }
+.wiz-nota { font-size: .72rem; color: var(--muted); margin-top: 8px; }
+.wiz-obs-lbl { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 14px 0 5px; display: block; }
+.wiz-obs-lbl .req { color: var(--danger); text-transform: none; letter-spacing: 0; }
+.wiz-pie { padding: 12px 18px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); display: flex; gap: 8px; }
+.wiz-pie button { flex: 1; padding: 13px; border-radius: var(--radius-sm); font-size: .9rem; font-weight: 700; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.wiz-pie .pri { background: var(--accent); color: #fff; border-color: var(--accent-border); flex: 2; }
+.wiz-pie .pri:disabled { opacity: .45; cursor: default; }
+
+/* Toast con Deshacer */
+#pdc-toast { position: fixed; left: 12px; right: 12px; bottom: 16px; z-index: 960; max-width: 520px; margin: 0 auto; background: var(--accent2); color: #fff; border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow-md); display: none; overflow: hidden; }
+#pdc-toast.visible { display: flex; align-items: center; gap: 10px; animation: fadeUp .2s ease; }
+#pdc-toast .pt-txt { flex: 1; font-size: .84rem; font-weight: 600; min-width: 0; }
+#pdc-toast button { background: none; border: 1px solid rgba(255,255,255,.35); color: #fbbf24; border-radius: var(--radius-sm); padding: 7px 12px; font-weight: 700; font-size: .8rem; flex-shrink: 0; }
+#pdc-toast .pt-prog { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--accent); width: 100%; }
+
+.nav-pdc-largo { display: none; }
+body.modo-cel .nav-pdc-largo { display: inline; }
+body.modo-cel .nav-pdc-corto { display: none; }
+/* Modo celular: solo PdC + Buscar */
+body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display: none; }
+@media (max-width: 640px) {
+  #pdc-wiz { padding: 0; align-items: stretch; }
+  .wiz-caja { max-width: none; max-height: none; height: 100%; border-radius: 0; }
+  .pdc-acciones { grid-template-columns: 1fr 1fr; }
+  /* encabezado en 2 renglones: logo + menú / obra + perfil + botones */
+  body.modo-cel #app-header { gap: 6px 8px; }
+  body.modo-cel .hdr-obra-prefix { display: none; }
+  body.modo-cel .hdr-obra { max-width: 128px; font-size: .78rem; }
+  body.modo-cel .hdr-btn { padding: 3px 8px; font-size: .7rem; }
+  body.modo-cel .hdr-sep { display: none; }
+  body.modo-cel .hdr-nav { margin-left: auto; }
+}
 </style>
 </head>
 <body>
@@ -906,7 +1064,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   <div class="caja">
     <span class="caja-emoji">📋</span>
     <div class="caja-logo">LibroObra</div>
-    <div class="caja-version" id="version-login">v6.1.3</div>
+    <div class="caja-version" id="version-login">v7.0.0</div>
     <div class="caja-sub">Registro de comunicaciones de obra</div>
 
     <div id="paso-email" class="login-paso activo">
@@ -961,9 +1119,10 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <nav class="hdr-nav">
       <button class="hdr-nav-btn active" id="nav-inicio" onclick="showSection('inicio')" disabled>Inicio</button>
       <button class="hdr-nav-btn" id="nav-comunicaciones" onclick="showSection('comunicaciones')" disabled>Comunicaciones</button>
-      <button class="hdr-nav-btn" id="nav-buscar" onclick="showSection('buscar')" disabled>Buscar</button>
+      <button class="hdr-nav-btn nav-cel" id="nav-buscar" onclick="showSection('buscar')" disabled>Buscar</button>
       <button class="hdr-nav-btn" id="nav-conexiones" onclick="showSection('conexiones')" disabled>Conexiones</button>
       <button class="hdr-nav-btn" id="nav-hitos" onclick="showSection('hitos')" disabled>Hitos</button>
+      <button class="hdr-nav-btn nav-cel hidden" id="nav-pdc" onclick="showSection('pdc')" title="Parte de Contrato"><span class="nav-pdc-corto">PdC</span><span class="nav-pdc-largo">Parte de Contrato</span></button>
       <a class="hdr-nav-guia" href="./instructivo_libroobra.html" target="_blank" rel="noopener">Guía ↗</a>
     </nav>
     <div class="hdr-sep"></div>
@@ -972,7 +1131,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <button class="hdr-btn" id="btn-cambiar-obra" onclick="cambiarObra()">Cambiar obra</button>
     <button class="hdr-btn hdr-btn-instalar hidden" id="btn-instalar">Instalar</button>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version" id="version-app">v6.1.3</span>
+    <span class="hdr-version" id="version-app">v7.0.0</span>
     <button class="hdr-btn" onclick="confirmarCerrarSesion()">Salir</button>
   </header>
 
@@ -1161,6 +1320,30 @@ textarea.form-control { resize: vertical; min-height: 66px; }
           <svg id="grafo-svg"></svg>
           <div id="grafo-vacio" class="grafo-vacio hidden"></div>
         </div>
+      </div>
+    </section>
+
+    <!-- ── PARTE DE CONTRATO (v7.0.0) ── -->
+    <section id="sec-pdc" class="section">
+      <div class="pdc-wrap">
+        <div class="card pdc-cab">
+          <div class="pdc-cab-fila">
+            <div>
+              <div class="pdc-titulo">Parte de Contrato</div>
+              <div class="pdc-dia" id="pdc-dia-label">—</div>
+            </div>
+            <span class="pdc-pill" id="pdc-pill">—</span>
+          </div>
+          <div class="pdc-prog"><div class="pdc-barra" id="pdc-barra"><i></i></div><span class="pdc-prog-txt" id="pdc-prog-txt"></span></div>
+          <div class="pdc-dias" id="pdc-dias"></div>
+        </div>
+        <div class="pdc-aviso hidden" id="pdc-aviso"></div>
+        <div class="pdc-acciones hidden" id="pdc-acciones">
+          <button type="button" class="pdc-btn-grande pri" id="pdc-btn-completar" onclick="pdcCompletarParte()">Completar parte</button>
+          <button type="button" class="pdc-btn-grande sec" id="pdc-btn-sinnov" onclick="pdcTodoSinNovedad()">Todo sin novedad</button>
+        </div>
+        <div id="pdc-lista" class="pdc-lista"></div>
+        <div class="pdc-pie" id="pdc-pie"></div>
       </div>
     </section>
 
@@ -1489,6 +1672,9 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 
 <div id="spinner"><div class="spinner-ring"></div><div id="spinner-msg"></div></div>
 <div id="toast" class="toast"></div>
+<!-- v7.0.0 — Parte de Contrato: wizard + toast con Deshacer -->
+<div id="pdc-wiz" role="dialog" aria-modal="true"><div class="wiz-caja" id="wiz-caja"></div></div>
+<div id="pdc-toast" role="status" aria-live="polite"><span class="pt-txt" id="pdc-toast-txt"></span><button type="button" id="pdc-toast-undo">Deshacer</button><div class="pt-prog" id="pdc-toast-prog"></div></div>
 <div id="tareas-panel" role="status" aria-live="polite"></div>
 <div id="hm-tooltip" class="tooltip-flotante"></div>
 <div id="hi-tl-tooltip" class="hi-tl-tooltip"></div>
@@ -1499,7 +1685,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 // ══════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════
-const APP_VERSION = 'v6.1.3';
+const APP_VERSION = 'v7.0.0';
 const API_URL = 'https://script.google.com/macros/s/AKfycbxDN2F_K6z4wQXDJAyyZ6EdoSqoQgHv8d8f7gXGo-QYdke3DXW6hvZtEnmEy9xFpjTO/exec';
 const SESION_KEY = 'lo_sesion';
 const OBRA_KEY = 'lo_obra_actual';
@@ -1559,6 +1745,10 @@ const estado = {
   editSnapshot: '',                   // v6.1.0 — campos del modal Editar al abrir (avisa cambios sin guardar al navegar el Hilo)
   pickers: {},                        // v6.1.0 — selectores de documentos (alta: resp/ref · vincular)
   editReq: false,                     // v6.1.1 — valor del interruptor "Requiere respuesta" en Ver/Editar (sin guardar)
+  puedePdC: false,                    // v7.0.0 — admin global o rac de la obra
+  modoCel: false,                     // v7.0.0 — pantalla ≤ 640 px: solo PdC + Buscar
+  seccionAuto: false,                 // v7.0.0 — la sección la eligió la app (no el usuario)
+  offline: false, reconectando: false, // v7.0.0 — se entró sin señal (PdC con datos del dispositivo)
   busq: { tipo: 'todos', palabraCompleta: false, palabrasSueltas: false, termino: '', resultados: null,
           total: 0, recortado: false, ms: 0, token: 0, cargando: false, error: '' }   // v6.1.2 — pestaña Buscar
 };
@@ -1868,13 +2058,15 @@ function cerrarModal(id) { document.getElementById(id).classList.remove('open');
 const ACCIONES_SEGURAS_REINTENTO = new Set([
   'inicializarSesion', 'inicializarObraLiviana', 'inicializarObraPesada', 'validarSesion',
   'getHistorial', 'getHitosLog', 'recalcularDashboard', 'registrarComunicacion', 'guardarHito',
-  'crearVinculo', 'bajaVinculo'   // v6.1.0 — idempotentes (IdVinculo generado acá / baja repetida = yaEstaba)
+  'crearVinculo', 'bajaVinculo',  // v6.1.0 — idempotentes (IdVinculo generado acá / baja repetida = yaEstaba)
+  'pdcInicializar', 'pdcBatch'    // v7.0.0 — lectura / lote idempotente por ID
 ]);
 // Mismo alcance que ACCIONES_GET + PWAPIN_ACCIONES_GET del .gs. validarPIN va por POST (el PIN no viaja en la URL).
 const ACCIONES_GET = new Set([
   'inicializarSesion', 'inicializarObraLiviana', 'inicializarObraPesada',
   'getHistorial', 'getHitosLog', 'recalcularDashboard', 'bajaHito',
   'crearVinculo', 'bajaVinculo',   // v6.1.0
+  'pdcInicializar',                // v7.0.0 (pdcBatch va por POST: el lote puede ser largo)
   'solicitarPIN', 'validarSesion'
 ]);
 
@@ -1996,6 +2188,9 @@ async function iniciarSesion(email) {
   try {
     res = await llamarBackend('inicializarSesion', { email: email });
   } catch (err) {
+    // v7.0.0 — sin señal: si este dispositivo ya tiene el PdC de la obra, se entra igual
+    const guardada = leerObraGuardada();
+    if (guardada && pdcCatGuardado(guardada.obraId)) { entrarSinConexion(email, guardada); return; }
     mostrarPantalla('login-screen');
     mostrarPasoLogin('sin-conexion');
     return;
@@ -2042,7 +2237,9 @@ const MOTIVOS_AUTH = {
   bloqueado: 'Tu usuario quedó bloqueado por intentos fallidos. Consultá con el administrador.'
 };
 function mostrarTextoErrorAuth(motivo) {
-  document.getElementById('texto-error-auth').textContent = MOTIVOS_AUTH[motivo] || 'No pudimos validar tu sesión. Iniciá sesión de nuevo.';
+  const n = pdcColasPendientes();   // v7.0.0 — la cola del PdC no se borra
+  document.getElementById('texto-error-auth').textContent = (MOTIVOS_AUTH[motivo] || 'No pudimos validar tu sesión. Iniciá sesión de nuevo.') +
+    (n ? ' Quedan ' + n + (n === 1 ? ' evento' : ' eventos') + ' del Parte de Contrato guardados en este dispositivo: se envían cuando vuelvas a ingresar.' : '');
 }
 
 document.getElementById('btn-pedir-pin').addEventListener('click', async function () {
@@ -2151,6 +2348,7 @@ function cerrarSessionDialog() { document.getElementById('session-dialog-overlay
 function textoPerfil() {
   if (!estado.obra) return '—';
   if (estado.perfil === 'admin') return 'Administrador';
+  if (estado.perfil === 'rac') return 'RAC (administrador de la obra)';   // v7.0.0
   return estado.perfil === 'usuario' ? 'Usuario' : 'Consulta';
 }
 async function confirmarCerrarSesion() {
@@ -2192,7 +2390,7 @@ function renderObras() {
     card.onclick = function () { entrarAObra(obra); };
     card.innerHTML =
       '<span><span class="obra-codigo">' + escaparHtml(obra.codigoObra) + '</span><span class="obra-nombre">' + escaparHtml(obra.nombreObra) + '</span></span>' +
-      '<span style="display:flex;align-items:center;gap:10px"><span class="obra-perfil">' + escaparHtml(obra.perfil === 'admin' ? 'admin' : obra.perfil) + '</span><span class="obra-flecha">›</span></span>';
+      '<span style="display:flex;align-items:center;gap:10px"><span class="obra-perfil">' + escaparHtml(obra.perfil === 'rac' ? 'RAC' : obra.perfil) + '</span><span class="obra-flecha">›</span></span>';
     cont.appendChild(card);
   });
 }
@@ -2238,6 +2436,7 @@ function resetDatosObra() {
   document.getElementById('grafo-input').value = '';
   estado.filtroTipo = 'todos'; estado.filtroHashtag = ''; estado.filtroPendientes = false;
   estado.puedeEditar = false; estado.perfil = '';
+  estado.puedePdC = false;   // v7.0.0
   estado.dashEsCopiaLocal = false; estado.dashFalloRecalc = false;
   estado.histCache = {};
   // v6.1.2 — la búsqueda es de la obra anterior
@@ -2260,8 +2459,14 @@ async function mostrarApp() {
   // v6.0.2: con copia local la carga va en segundo plano (panel de tareas, sin velo)
   const dashLocal = leerDashLocal(estado.obra.obraId);
   if (dashLocal) { estado.dashboard = dashLocal; estado.dashEsCopiaLocal = true; }
-  estado.seccion = 'inicio';
-  showSection('inicio', true);
+  // v7.0.0 — PdC: lo guardado en el dispositivo se ve al instante; el permiso se confirma en la carga liviana
+  estado.offline = false;
+  pdcAbrirObra(estado.obra.obraId);
+  estado.puedePdC = !!pdc.cat;
+  pintarNavPdc();
+  estado.seccionAuto = true;
+  estado.seccion = seccionInicial();
+  showSection(estado.seccion, true);
   await cargarDatosObra(false);
 }
 
@@ -2270,7 +2475,7 @@ function pintarHeaderObra() {
   document.getElementById('hdr-obra').title = estado.obra.codigoObra + ' · ' + estado.obra.nombreObra;
   const perf = document.getElementById('hdr-perfil');
   // v6.1.0 — con SOLO_ADMIN_EDITA en el backend, todo el que no edita ve "Solo lectura"
-  const txt = !estado.perfil ? '' : estado.perfil === 'admin' ? 'Administrador' : (estado.puedeEditar ? '' : 'Solo lectura');
+  const txt = !estado.perfil ? '' : estado.perfil === 'admin' ? 'Administrador' : estado.perfil === 'rac' ? 'RAC' : (estado.puedeEditar ? '' : 'Solo lectura');
   perf.textContent = txt;
   perf.classList.toggle('hidden', !txt);
 }
@@ -2281,6 +2486,7 @@ function habilitarNav(on) {
     b.disabled = !on;
     b.title = on ? '' : 'Cargando datos…';
   });
+  document.getElementById('nav-pdc').disabled = false;   // v7.0.0 — el PdC no espera la carga de documentos
 }
 /** v6.0.2 — mientras corre una carga: sin Cambiar obra, Recalcular ni ↻ Actualizar (evita cargas cruzadas). */
 function bloquearDuranteCarga(on) {
@@ -2307,7 +2513,7 @@ async function cargarDatosObra(recarga) {
   const obraId = estado.obra.obraId;
   // v6.0.2 — en segundo plano si ya hay algo útil en pantalla: el dashboard
   // local (apertura / F5) o los datos cargados (↻ Actualizar). Si no, velo.
-  const enFondo = !!(recarga && estado.datosListos) || !!estado.dashboard;
+  const enFondo = !!(recarga && estado.datosListos) || !!estado.dashboard || estado.seccion === 'pdc';   // v7.0.0: el PdC nunca queda tapado
   let etapa = 'permisos';
   bloquearDuranteCarga(true);
   tareaQuitar('permisos'); tareaQuitar('datos');
@@ -2321,6 +2527,23 @@ async function cargarDatosObra(recarga) {
     estado.puedeEditar = !!liv.permisos.puedeEditar;
     estado.perfil = liv.permisos.perfil;
     pintarHeaderObra();
+    // v7.0.0 — Parte de Contrato: permiso real + datos frescos ANTES de la carga pesada si se está mirando
+    estado.puedePdC = !!liv.permisos.puedePdC;
+    pintarNavPdc();
+    if (!estado.puedePdC) {
+      pdcLsSet(pdcK('cat', obraId), null);   // ya no abre sin señal (la cola, si hubiera, se conserva)
+      if (estado.seccion === 'pdc') { estado.seccionAuto = true; showSection(seccionInicial(), true); }
+    } else {
+      pdcAbrirObra(obraId);
+      if (estado.modoCel && estado.seccionAuto && estado.seccion !== 'pdc') showSection('pdc', true);
+      if (estado.seccion === 'pdc') {
+        if (enFondo) tareaIniciar('pdc', 'Actualizando el Parte de Contrato…');
+        await pdcTraer();
+        if (seq !== estado.cargaSeq) return;
+        if (enFondo) tareaOk('pdc', 'Parte de Contrato al día');
+      }
+      if (pdc.queue.length) pdcEnviar();
+    }
 
     etapa = 'datos';
     if (enFondo) { tareaOk('permisos', 'Permisos verificados'); tareaIniciar('datos', 'Cargando comunicaciones e hitos…'); }
@@ -2373,7 +2596,8 @@ async function cargarDatosObra(recarga) {
         document.getElementById('tbody-hitos').innerHTML = '';
         habilitarNav(false);
         pintarHeaderObra();
-        showSection('inicio', true);
+        pintarNavPdc();
+        showSection(seccionInicial(), true);
       }
       mostrarLoader('<div style="max-width:420px">' + escaparHtml(msg) + '</div>' +
         '<button class="btn-accion" id="btn-loader-reintentar">Reintentar</button>' +
@@ -2391,7 +2615,11 @@ function recargarDatosObra() { if (!estado.cargando) cargarDatosObra(true); }
 // NAVEGACIÓN (todo en memoria — no pide nada al backend)
 // ══════════════════════════════════════════════
 function showSection(id, forzar) {
-  if (!forzar && !estado.datosListos) return;
+  // v7.0.0 — el PdC no depende de la carga de documentos; en el celular solo PdC + Buscar
+  if (id === 'pdc' && !estado.puedePdC) id = seccionInicial();
+  if (estado.modoCel && SECCIONES_CEL.indexOf(id) === -1) id = seccionInicial();
+  if (!forzar && !estado.datosListos && id !== 'pdc') return;
+  if (!forzar) estado.seccionAuto = false;
   estado.seccion = id;
   document.querySelectorAll('.section').forEach(function (s) { s.classList.remove('active'); });
   document.querySelectorAll('.hdr-nav-btn').forEach(function (b) { b.classList.remove('active'); });
@@ -2403,6 +2631,7 @@ function showSection(id, forzar) {
   if (id === 'hitos' && estado.datosListos) renderHitos();
   if (id === 'buscar' && estado.datosListos) renderBuscar();   // v6.1.2
   if (id === 'conexiones' && estado.datosListos) renderConexiones();   // v6.1.3
+  if (id === 'pdc') pdcAlEntrar(!forzar);   // v7.0.0
 }
 
 // ══════════════════════════════════════════════
@@ -3400,7 +3629,7 @@ async function guardarCarga() {
 function abrirModalEditar(id) {
   const c = estado.comunicaciones.find(function (x) { return x.id === id; });
   if (!c) return;
-  const soloLectura = !estado.puedeEditar;
+  const soloLectura = !editaAqui();   // v7.0.0 — en el celular siempre solo lectura
   estado.editId = id;
   document.getElementById('edit-titulo').textContent = (soloLectura ? '' : 'Editar: ') + c.tipo + ' ' + c.numero;
   document.getElementById('edit-fecha').textContent = fmtFecha(c.fecha);
@@ -3445,7 +3674,7 @@ function pintarPlazoEdit(c) {
   el.innerHTML = (c.estado === 'Anulado' ? '' : htmlSemaforo(c) + ' &nbsp;') + '<span style="color:var(--muted)">' + escaparHtml(partes.join(' · ')) + '</span>';
 }
 function snapshotEdit() {
-  if (!estado.puedeEditar) return '';
+  if (!editaAqui()) return '';
   return JSON.stringify([document.getElementById('edit-estado').value, document.getElementById('edit-obs').value,
     normalizarHashtags(document.getElementById('edit-hashtags').value), etiquetasElegidas('edit-etiquetas'), !!estado.editReq]);
 }
@@ -3465,7 +3694,7 @@ function plazoDeTipo(tipoCod) {
 }
 function pintarReqEdit(c) {
   const seg = document.getElementById('edit-req');
-  const soloLectura = !estado.puedeEditar;
+  const soloLectura = !editaAqui();
   seg.classList.toggle('solo-lectura', soloLectura);
   seg.querySelectorAll('button').forEach(function (b) {
     b.classList.toggle('on', (b.dataset.req === '1') === !!estado.editReq);
@@ -3494,11 +3723,11 @@ function pintarReqEdit(c) {
 }
 document.getElementById('edit-req').addEventListener('click', function (e) {
   const b = e.target.closest('[data-req]');
-  if (!b || !estado.puedeEditar) return;
+  if (!b || !editaAqui()) return;
   estado.editReq = b.dataset.req === '1';
   pintarReqEdit(comPorId(estado.editId));
 });
-function hayCambiosSinGuardar() { return estado.puedeEditar && document.getElementById('modal-editar').classList.contains('open') && snapshotEdit() !== estado.editSnapshot; }
+function hayCambiosSinGuardar() { return editaAqui() && document.getElementById('modal-editar').classList.contains('open') && snapshotEdit() !== estado.editSnapshot; }
 
 function renderHilo(id) {
   const cont = document.getElementById('edit-hilo');
@@ -3508,7 +3737,7 @@ function renderHilo(id) {
     ['Referencias', vs.referencias], ['Citado en', vs.citadoEn]
   ].filter(function (g) { return g[1].length; });
   if (!grupos.length) {
-    cont.innerHTML = '<div class="hilo-vacio">Sin vínculos.' + (estado.puedeEditar ? ' Usá "+ Vincular" para agregar.' : '') + '</div>';
+    cont.innerHTML = '<div class="hilo-vacio">Sin vínculos.' + (editaAqui() ? ' Usá "+ Vincular" para agregar.' : '') + '</div>';
     return;
   }
   cont.innerHTML = grupos.map(function (g) {
@@ -3519,7 +3748,7 @@ function renderHilo(id) {
         badgeTipo(c.tipo) + '<span class="vinc-num">' + escaparHtml(c.numero) + '</span>' +
         '<span class="vinc-asunto">' + escaparHtml(c.asunto) + ' <span class="vinc-fecha">· ' + fmtFecha(c.fecha) + (c.estado === 'Anulado' ? ' · anulado' : '') + '</span></span>' +
         htmlSemaforo(c) +
-        (estado.puedeEditar ? '<button type="button" class="hilo-baja" data-baja="' + escaparHtml(x.v.idVinculo) + '" title="Dar de baja el vínculo">×</button>' : '<span></span>') +
+        (editaAqui() ? '<button type="button" class="hilo-baja" data-baja="' + escaparHtml(x.v.idVinculo) + '" title="Dar de baja el vínculo">×</button>' : '<span></span>') +
         '</div>';
     }).join('');
   }).join('');
@@ -3578,7 +3807,7 @@ async function confirmarBajaVinculo(idVinculo) {
 
 function abrirModalVincular() {
   const c = comPorId(estado.editId);
-  if (!c || !estado.puedeEditar) return;
+  if (!c || !editaAqui()) return;
   document.getElementById('vinc-titulo').textContent = 'Vincular ' + descDoc(c);
   document.getElementById('vinc-tipo').value = VINC_RESPONDE;
   cambiarTipoVincular();
@@ -3807,7 +4036,7 @@ function pintarTextoEdit(c) {
   const leyendo = !!_indexando[c.id];
   el.className = 'info-lectura texto-linea' + (info.cls ? ' ' + info.cls : '');
   el.innerHTML = '<span>' + (leyendo ? '<span class="btn-mini-spin"></span> Leyendo el PDF…' : escaparHtml(info.txt)) + '</span>' +
-    (estado.puedeEditar && info.leer
+    (editaAqui() && info.leer
       ? '<button type="button" class="btn btn-secondary btn-sm" id="btn-leer-ahora"' + (leyendo ? ' disabled' : '') + '>Leer ahora</button>' : '');
   const b = document.getElementById('btn-leer-ahora');
   if (b) b.onclick = function () { indexarEnFondo(c.id, true); };
@@ -4590,6 +4819,676 @@ async function exportarHitosPDF() {
   } catch (err) {
     mostrarAviso('No se pudo generar el PDF: ' + err.message);
   } finally { spinner(false); container.innerHTML = ''; }
+}
+
+// ══════════════════════════════════════════════
+// v7.0.0 — PARTE DE CONTRATO (PdC) · entrega "Carga"
+// ══════════════════════════════════════════════
+// Cola local-first reusada de RegMed v1.0.0 (recs + queue, applyOp,
+// flush en lote por POST text/plain, inflight, pull con "lo pendiente
+// local manda", toast con Deshacer, envío al cerrarse el toast).
+// Cambios: login pwa_pin (no clave de dispositivo), datos POR OBRA en el
+// dispositivo (lo_pdc_{cat|recs|queue|last}_{obraId}), pull acotado a
+// PDC_DIAS_ATRAS, GrupoID en la multiselección. Solo cargar y borrar (D21).
+const PDC_TOAST_MS = 6000;
+const PDC_FLUSH_MS = PDC_TOAST_MS + 800;   // se envía al cerrarse el toast: "Deshacer" no genera tráfico
+const PDC_RETRY_MS = 30000;
+const PDC_PULL_MS = 120000;
+const PDC_IMPACTO_TXT = ['Sin impacto', 'Leve', 'Parcial', 'Día caído'];
+const DIAS_SEM = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const SECCIONES_CEL = ['pdc', 'buscar'];
+
+const pdc = {
+  obraId: '', cat: null, recs: {}, queue: [], lastSync: null,
+  flushing: false, inflight: 0, syncErr: '', flushTimer: null,
+  dia: '',                 // '' = hoy (sigue al reloj); si no, 'yyyy-MM-dd' elegido
+  desde: '',               // inicio de la ventana que trajo el servidor
+  sinPdC: false, mensaje: '', cargando: false, ultimoPull: 0, pullSeq: 0, abiertos: {}
+};
+
+// ── Dispositivo (localStorage, por obra) ──
+function pdcLsGet(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+function pdcLsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { console.warn('[PdC] no se pudo guardar en el dispositivo:', e); } }
+function pdcK(nombre, obraId) { return 'lo_pdc_' + nombre + '_' + (obraId || pdc.obraId); }
+function pdcGuardar() {
+  if (!pdc.obraId) return;
+  pdcLsSet(pdcK('recs'), pdc.recs); pdcLsSet(pdcK('queue'), pdc.queue); pdcLsSet(pdcK('last'), pdc.lastSync);
+}
+function pdcCatGuardado(obraId) { return pdcLsGet(pdcK('cat', obraId), null); }
+/** Eventos sin enviar en este dispositivo (todas las obras). */
+function pdcColasPendientes() {
+  let n = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (/^lo_pdc_queue_/.test(k)) n += (pdcLsGet(k, []) || []).length;
+    }
+  } catch (e) { }
+  return n;
+}
+/** Carga del dispositivo el catálogo, los eventos y la cola de la obra. */
+function pdcAbrirObra(obraId) {
+  if (!obraId || pdc.obraId === obraId) return;
+  clearTimeout(pdc.flushTimer);
+  pdc.pullSeq++;
+  Object.assign(pdc, {
+    obraId: obraId, cat: pdcCatGuardado(obraId), recs: pdcLsGet(pdcK('recs', obraId), {}),
+    queue: pdcLsGet(pdcK('queue', obraId), []), lastSync: pdcLsGet(pdcK('last', obraId), null),
+    flushing: false, inflight: 0, syncErr: '', dia: '', desde: '', sinPdC: false, mensaje: '',
+    cargando: false, ultimoPull: 0, abiertos: {}
+  });
+}
+
+// ── Fechas ──
+function pdcDayKey(d) { return d.getFullYear() + '-' + _p2(d.getMonth() + 1) + '-' + _p2(d.getDate()); }
+function pdcSumarDias(iso, n) { const d = _parseISO(iso); d.setDate(d.getDate() + n); return pdcDayKey(d); }
+function pdcDiaSel() { return pdc.dia || hoyISO(); }
+function pdcDiaLabel(iso) {
+  const d = _parseISO(iso);
+  if (!d) return iso;
+  const base = DIAS_SEM[d.getDay()] + ' ' + _p2(d.getDate()) + '/' + _p2(d.getMonth() + 1);
+  const hoy = hoyISO();
+  return iso === hoy ? 'Hoy · ' + base : iso === pdcSumarDias(hoy, -1) ? 'Ayer · ' + base : base;
+}
+/** ISO con la zona del dispositivo: 2026-10-07T10:32:00-03:00 (= isoLocal de RegMed). */
+function pdcIsoLocal(d) {
+  const off = -d.getTimezoneOffset(), s = off >= 0 ? '+' : '-', a = Math.abs(off);
+  return pdcDayKey(d) + 'T' + _p2(d.getHours()) + ':' + _p2(d.getMinutes()) + ':' + _p2(d.getSeconds()) + s + _p2(Math.floor(a / 60)) + ':' + _p2(a % 60);
+}
+function pdcHora(iso) { const m = String(iso || '').match(/T(\d{2}):(\d{2})/); return m ? m[1] + ':' + m[2] : ''; }
+function pdcDtLocal(d) { return pdcDayKey(d) + 'T' + _p2(d.getHours()) + ':' + _p2(d.getMinutes()); }
+
+// ── Catálogo ──
+function pdcTiposActivos() { return pdc.cat ? pdc.cat.tipos.filter(function (t) { return t.activo; }) : []; }
+function pdcTipo(id) { return pdc.cat ? pdc.cat.tipos.find(function (t) { return t.tipoId === id; }) || null : null; }
+function pdcValor(id) { return pdc.cat ? pdc.cat.valores.find(function (v) { return v.valorId === id; }) || null : null; }
+function pdcValoresDe(tipoId) {
+  return pdc.cat.valores.filter(function (v) { return v.tipoId === tipoId && v.activo; })
+    .sort(function (a, b) { return (b.esSinNovedad - a.esSinNovedad) || (a.orden - b.orden); });
+}
+function pdcSinNovedadDe(tipoId) { return pdcValoresDe(tipoId).find(function (v) { return v.esSinNovedad; }) || null; }
+function pdcNombreValor(e) { const v = pdcValor(e.valorId); return v ? v.valor : e.valorId; }
+
+// ── Estado del día ──
+function pdcEventosDia(dia) {
+  return Object.keys(pdc.recs).map(function (k) { return pdc.recs[k]; })
+    .filter(function (e) { return e.estado !== 'borrado' && e.fecha === dia; })
+    .sort(function (a, b) { return a.fechaHora < b.fechaHora ? -1 : a.fechaHora > b.fechaHora ? 1 : 0; });
+}
+function pdcEstadoDia(dia) {
+  const porTipo = {};
+  pdcEventosDia(dia).forEach(function (e) { (porTipo[e.tipoId] = porTipo[e.tipoId] || []).push(e); });
+  const tipos = pdcTiposActivos();
+  const faltan = tipos.filter(function (t) { return !porTipo[t.tipoId]; });
+  return { tipos: tipos, porTipo: porTipo, faltan: faltan, hechos: tipos.length - faltan.length };
+}
+/** Días anteriores incompletos (hasta PDC_DIAS_ATRAS, nunca antes de PDC_FECHA_INICIO). */
+function pdcDiasIncompletos() {
+  if (!pdc.cat || !pdc.cat.config.PDC_FECHA_INICIO) return [];
+  const ini = pdc.cat.config.PDC_FECHA_INICIO, hoy = hoyISO(), n = pdc.cat.config.PDC_DIAS_ATRAS || 7, out = [];
+  for (let k = 1; k <= n; k++) {
+    const d = pdcSumarDias(hoy, -k);
+    if (d < ini) break;
+    const st = pdcEstadoDia(d);
+    if (st.faltan.length) out.push({ dia: d, faltan: st.faltan.length });
+  }
+  return out;
+}
+
+// ── Modelo + cola ──
+function pdcEventoLocal(rec) {
+  const v = pdcValor(rec.valorId);
+  return {
+    id: rec.id, fecha: rec.fecha, fechaHora: rec.fechaHora, tipoId: rec.tipoId, valorId: rec.valorId,
+    observacion: rec.observacion || '', origen: rec.origen || 'wizard', grupoId: rec.grupoId || '',
+    estado: 'activo', impacto: v ? v.impacto : '', responsable: v ? v.responsable : '', usuario: estado.email
+  };
+}
+function pdcAplicarOp(map, op) {
+  const r = op.rec;
+  if (op.op === 'add') map[r.id] = Object.assign(map[r.id] || {}, pdcEventoLocal(r));
+  else if (op.op === 'delete' && map[r.id]) map[r.id].estado = 'borrado';
+}
+function pdcHacerOps(ops, demora) {
+  ops.forEach(function (op) { pdcAplicarOp(pdc.recs, op); pdc.queue.push(op); });
+  pdcGuardar();
+  renderPdc();
+  pdcProgramarEnvio(demora == null ? 400 : demora);
+}
+/** Índice en la cola de un alta que todavía no salió (fuera del lote en viaje). */
+function pdcIdxAltaPendiente(id) {
+  for (let i = pdc.inflight; i < pdc.queue.length; i++) if (pdc.queue[i].op === 'add' && pdc.queue[i].rec.id === id) return i;
+  return -1;
+}
+/** Deshacer / borrar: si el alta no salió se descarta acá sin tráfico; si ya salió, borrado lógico. */
+function pdcDeshacer(ids) {
+  const bajas = [];
+  ids.forEach(function (id) {
+    const i = pdcIdxAltaPendiente(id);
+    if (i >= 0) { pdc.queue.splice(i, 1); delete pdc.recs[id]; }
+    else if (pdc.recs[id] && pdc.recs[id].estado !== 'borrado') bajas.push({ op: 'delete', rec: { id: id } });
+  });
+  if (bajas.length) pdcHacerOps(bajas, 400);
+  else { pdcGuardar(); renderPdc(); }
+}
+
+// ── Sincronización ──
+function pdcProgramarEnvio(ms) { clearTimeout(pdc.flushTimer); pdc.flushTimer = setTimeout(pdcEnviar, ms); }
+
+async function pdcEnviar() {
+  if (pdc.flushing || !pdc.queue.length || !estado.email || !pdc.obraId) { pdcPintarSync(); return; }
+  const obraId = pdc.obraId;
+  pdc.flushing = true; pdc.inflight = pdc.queue.length; pdcPintarSync();
+  const ops = pdc.queue.slice(0, pdc.inflight);
+  let seguir = false;
+  try {
+    const r = await llamarBackend('pdcBatch', { email: estado.email, obraId: obraId, ops: ops });
+    if (pdc.obraId !== obraId) {   // se cambió de obra mientras viajaba: se descuenta de la cola de ESA obra
+      if (r && r.ok) { const q = pdcLsGet(pdcK('queue', obraId), []); q.splice(0, ops.length); pdcLsSet(pdcK('queue', obraId), q); }
+      return;
+    }
+    if (r && r.ok) {
+      pdc.queue.splice(0, ops.length);
+      pdc.syncErr = '';
+      pdc.lastSync = pdcIsoLocal(new Date());
+      (r.eventos || []).forEach(function (ev) { pdc.recs[ev.id] = ev; });   // la versión del servidor manda
+      const rech = (r.resultados || []).filter(function (x) { return x.estado === 'rechazado'; });
+      const lineas = rech.map(function (x) {
+        const op = ops.find(function (o) { return o.rec.id === x.id && o.op === x.op; });
+        const e = op && op.op === 'add' ? pdcEventoLocal(op.rec) : pdc.recs[x.id];
+        if (x.op === 'add') delete pdc.recs[x.id];
+        else if (pdc.recs[x.id]) pdc.recs[x.id].estado = 'activo';
+        const t = e ? pdcTipo(e.tipoId) : null;
+        return '• ' + (t ? t.tipo : '') + (e ? ' · ' + pdcNombreValor(e) + ' (' + pdcHora(e.fechaHora) + ')' : '') + ': ' + x.motivo;
+      });
+      pdc.queue.forEach(function (op) { pdcAplicarOp(pdc.recs, op); });   // lo que sigue en la cola manda
+      if (lineas.length) mostrarAviso('El servidor no aceptó ' + (lineas.length === 1 ? 'un evento' : lineas.length + ' eventos') +
+        ' y se ' + (lineas.length === 1 ? 'quitó' : 'quitaron') + ' del parte:\n\n' + lineas.join('\n'), 'Parte de Contrato');
+      seguir = pdc.queue.length > 0;
+    } else {
+      pdc.syncErr = (r && (r.error || r.motivo)) || 'error del servidor';
+    }
+  } catch (err) {
+    pdc.syncErr = navigator.onLine ? 'sin respuesta del servidor' : 'sin conexión';
+  } finally {
+    if (pdc.obraId === obraId) { pdc.flushing = false; pdc.inflight = 0; pdcGuardar(); renderPdc(); }
+  }
+  if (seguir) pdcProgramarEnvio(800);
+}
+
+/** Trae catálogo + eventos (desde = 'yyyy-MM-dd' opcional para mirar días más viejos que la ventana). */
+async function pdcTraer(desde) {
+  if (!pdc.obraId || !estado.email || !estado.obra) return;
+  const obraId = pdc.obraId, seq = ++pdc.pullSeq;
+  pdc.cargando = true;
+  renderPdc();
+  try {
+    const r = await api('pdcInicializar', desde ? { desde: desde } : {});
+    if (seq !== pdc.pullSeq || pdc.obraId !== obraId) return;
+    pdc.ultimoPull = Date.now();
+    pdc.syncErr = '';
+    if (r.sinPdC) {
+      pdc.sinPdC = true; pdc.mensaje = r.mensaje || ''; pdc.cat = null;
+      pdcLsSet(pdcK('cat'), null);
+    } else {
+      pdc.sinPdC = false;
+      pdc.cat = r.catalogo;
+      pdcLsSet(pdcK('cat'), r.catalogo);
+      pdc.desde = r.desde || '';
+      const map = {};
+      (r.eventos || []).forEach(function (ev) { map[ev.id] = ev; });
+      pdc.queue.forEach(function (op) { pdcAplicarOp(map, op); });   // lo pendiente local manda sobre lo remoto
+      pdc.recs = map;
+      if (!pdc.queue.length) pdc.lastSync = pdcIsoLocal(new Date());
+    }
+    pdcGuardar();
+  } catch (err) {
+    if (seq !== pdc.pullSeq) return;
+    pdc.syncErr = err.respuesta ? err.message : (navigator.onLine ? 'sin respuesta del servidor' : 'sin conexión');
+  } finally {
+    if (seq === pdc.pullSeq) { pdc.cargando = false; renderPdc(); }
+  }
+}
+
+function pdcPintarSync() {
+  const p = document.getElementById('pdc-pill');
+  if (!p) return;
+  const n = pdc.queue.length;
+  let txt, cls;
+  if (pdc.flushing) { txt = '⟳ enviando ' + n; cls = 'pend'; }
+  else if (estado.offline) { txt = '⚠ sin conexión' + (n ? ' · ' + n : ''); cls = 'err'; }
+  else if (pdc.syncErr) { txt = '⚠ ' + pdc.syncErr + (n ? ' · ' + n : ''); cls = 'err'; }
+  else if (n) { txt = '⏳ ' + n + (n === 1 ? ' pendiente' : ' pendientes'); cls = 'pend'; }
+  else if (pdc.lastSync) { txt = '✓ ' + pdcHora(pdc.lastSync); cls = 'ok'; }
+  else { txt = '—'; cls = ''; }
+  p.textContent = txt;
+  p.className = 'pdc-pill ' + cls;
+  p.title = n ? n + ' evento(s) guardados en el dispositivo, sin enviar todavía' : 'Sincronizado con el Sheet de la obra';
+}
+
+// ── Pantalla "Hoy" ──
+function pdcImpactoHtml(imp) {
+  if (imp === '' || imp === null || imp === undefined) return '';
+  return '<span class="pdc-imp i' + imp + '" title="Impacto ' + imp + ' · ' + PDC_IMPACTO_TXT[imp] + '">' + imp + '</span>';
+}
+function pdcRespHtml(r) { return r && r !== '—' ? '<span class="pdc-resp r-' + escaparHtml(r.toLowerCase()) + '">' + escaparHtml(r) + '</span>' : ''; }
+
+function renderPdc() {
+  pdcPintarSync();
+  if (estado.seccion !== 'pdc') return;
+  const dia = pdcDiaSel(), hoy = hoyISO();
+  const aviso = document.getElementById('pdc-aviso');
+  const acciones = document.getElementById('pdc-acciones');
+  const lista = document.getElementById('pdc-lista');
+  document.getElementById('pdc-dia-label').textContent = pdcDiaLabel(dia);
+  let avisoTxt = '', avisoCls = '';
+  if (estado.offline) avisoTxt = 'Sin conexión: podés cargar el parte igual. Queda guardado en este dispositivo y se envía solo cuando vuelva la señal.';
+  if (pdc.sinPdC) { avisoTxt = pdc.mensaje; avisoCls = 'err'; }
+  else if (!pdc.cat) {
+    avisoTxt = pdc.cargando ? '' : (estado.offline || pdc.syncErr
+      ? 'Todavía no hay datos del Parte de Contrato de esta obra en este dispositivo. Se cargan cuando haya conexión.'
+      : 'Cargando el catálogo de la obra…');
+    avisoCls = estado.offline || pdc.syncErr ? 'err' : '';
+  }
+  aviso.className = 'pdc-aviso' + (avisoCls ? ' ' + avisoCls : '') + (avisoTxt ? '' : ' hidden');
+  aviso.textContent = avisoTxt;
+  if (!pdc.cat) {
+    acciones.classList.add('hidden');
+    document.getElementById('pdc-barra').classList.add('hidden');
+    document.getElementById('pdc-prog-txt').textContent = '';
+    document.getElementById('pdc-dias').innerHTML = '';
+    lista.innerHTML = pdc.cargando ? '<div class="pdc-cargando"><span class="btn-mini-spin"></span> Cargando el catálogo de la obra…</div>' : '';
+    document.getElementById('pdc-pie').innerHTML = '';
+    return;
+  }
+  const st = pdcEstadoDia(dia);
+  const total = st.tipos.length, hechos = st.hechos;
+  const barra = document.getElementById('pdc-barra');
+  barra.classList.remove('hidden');
+  barra.classList.toggle('completo', total > 0 && hechos === total);
+  barra.querySelector('i').style.width = (total ? Math.round(hechos / total * 100) : 0) + '%';
+  document.getElementById('pdc-prog-txt').textContent = hechos + ' / ' + total + ' tipos';
+
+  // Días: Hoy · Ayer · fecha · incompletos
+  const ayer = pdcSumarDias(hoy, -1);
+  const incompletos = pdcDiasIncompletos();
+  const faltaAyer = incompletos.find(function (x) { return x.dia === ayer; });
+  let dias = '<button type="button" class="pdc-chip-dia' + (dia === hoy ? ' on' : '') + '" data-dia="' + hoy + '">Hoy</button>' +
+    '<button type="button" class="pdc-chip-dia' + (dia === ayer ? ' on' : '') + (faltaAyer && dia !== ayer ? ' falta' : '') + '" data-dia="' + ayer + '"' +
+    (faltaAyer ? ' title="Faltan ' + faltaAyer.faltan + ' tipos"' : '') + '>Ayer' + (faltaAyer ? ' · ' + faltaAyer.faltan : '') + '</button>' +
+    '<input type="date" class="pdc-fecha-in" id="pdc-fecha-in" max="' + hoy + '" value="' + dia + '" title="Elegir otro día">';
+  incompletos.filter(function (x) { return x.dia !== ayer; }).forEach(function (x) {
+    dias += '<button type="button" class="pdc-chip-dia falta' + (dia === x.dia ? ' on' : '') + '" data-dia="' + x.dia + '" title="Faltan ' + x.faltan + ' tipos">' +
+      escaparHtml(pdcDiaLabel(x.dia)) + ' · ' + x.faltan + '</button>';
+  });
+  document.getElementById('pdc-dias').innerHTML = dias;
+
+  acciones.classList.remove('hidden');
+  const btnC = document.getElementById('pdc-btn-completar'), btnS = document.getElementById('pdc-btn-sinnov');
+  btnC.disabled = !st.faltan.length;
+  btnC.textContent = st.faltan.length ? 'Completar parte (' + st.faltan.length + ')' : '✓ Parte completo';
+  btnS.disabled = !st.faltan.some(function (t) { return pdcSinNovedadDe(t.tipoId); });
+
+  const pend = {};
+  pdc.queue.forEach(function (o) { pend[o.rec.id] = true; });
+  lista.innerHTML = st.tipos.map(function (t) {
+    const evs = st.porTipo[t.tipoId] || [];
+    const ok = evs.length > 0;
+    let resumen = 'Pendiente';
+    if (ok) {
+      const ult = evs[evs.length - 1];
+      const grupo = ult.grupoId ? evs.filter(function (e) { return e.grupoId === ult.grupoId; }) : [ult];
+      resumen = grupo.map(pdcNombreValor).join(', ') + ' · ' + pdcHora(ult.fechaHora) + (evs.length > grupo.length ? ' · ' + evs.length + ' eventos' : '');
+    }
+    const impMax = evs.reduce(function (m, e) { return Math.max(m, Number(e.impacto) || 0); }, 0);
+    const hayPend = evs.some(function (e) { return pend[e.id]; });
+    const det = evs.map(function (e) {
+      return '<div class="pdc-ev">' +
+        '<span class="pdc-ev-hora">' + escaparHtml(pdcHora(e.fechaHora)) + '</span>' +
+        '<div class="pdc-ev-txt"><div>' + escaparHtml(pdcNombreValor(e)) + ' ' + pdcImpactoHtml(e.impacto) + pdcRespHtml(e.responsable) +
+        (pend[e.id] ? ' <span class="pdc-ev-pend" title="Guardado en el dispositivo, sin enviar">⏳</span>' : '') + '</div>' +
+        (e.observacion ? '<div class="pdc-ev-obs">' + escaparHtml(e.observacion) + '</div>' : '') + '</div>' +
+        '<button type="button" class="pdc-ev-borrar" data-borrar="' + escaparHtml(e.id) + '" title="Borrar este evento">🗑</button></div>';
+    }).join('');
+    return '<div class="pdc-tipo ' + (ok ? 'ok' : 'pend') + (pdc.abiertos[t.tipoId] ? ' abierto' : '') + '" data-tipo="' + escaparHtml(t.tipoId) + '">' +
+      '<button type="button" class="pdc-tipo-cab" data-toggle="' + escaparHtml(t.tipoId) + '">' +
+      '<span class="pdc-tipo-ico">' + (ok ? '✓' : '!') + '</span>' +
+      '<span class="pdc-tipo-info"><span class="pdc-tipo-nombre">' + escaparHtml(t.tipo) + '</span>' +
+      '<span class="pdc-tipo-estado">' + escaparHtml(resumen) + (hayPend ? ' ⏳' : '') + '</span></span>' +
+      (ok ? pdcImpactoHtml(impMax) : '') + '<span class="pdc-chev">›</span></button>' +
+      '<div class="pdc-tipo-det">' + det +
+      '<button type="button" class="pdc-agregar" data-agregar="' + escaparHtml(t.tipoId) + '">+ ' + (ok ? 'Agregar otro evento' : 'Cargar') + '</button></div></div>';
+  }).join('') || '<div class="pdc-aviso">La obra no tiene tipos activos en PdC_Tipos.</div>';
+
+  const n = pdc.queue.length;
+  document.getElementById('pdc-pie').innerHTML =
+    (n ? '<span>' + n + (n === 1 ? ' evento guardado' : ' eventos guardados') + ' en el dispositivo, sin enviar.</span> ' : '') +
+    (pdc.lastSync ? '<span>Última sincronización: ' + escaparHtml(pdcDiaLabel(pdc.lastSync.slice(0, 10)).replace('Hoy · ', 'hoy ') + ' ' + pdcHora(pdc.lastSync)) + '.</span> ' : '') +
+    (!pdc.cat.config.PDC_FECHA_INICIO ? '<span>La obra no tiene <b>PDC_FECHA_INICIO</b>: los días anteriores no se marcan como incompletos.</span> ' : '') +
+    (!estado.offline ? '<button type="button" class="btn btn-secondary btn-sm" id="pdc-btn-sync">↻ Sincronizar ahora</button>' : '');
+}
+
+function pdcElegirDia(d) {
+  const hoy = hoyISO();
+  if (!d || d > hoy) return;
+  pdc.dia = d === hoy ? '' : d;
+  pdc.abiertos = {};
+  renderPdc();
+  if (pdc.desde && d < pdc.desde && !estado.offline) pdcTraer(d);   // más viejo que la ventana: se pide desde ese día
+}
+
+document.getElementById('sec-pdc').addEventListener('click', function (e) {
+  const dia = e.target.closest('[data-dia]');
+  if (dia) { pdcElegirDia(dia.dataset.dia); return; }
+  const tg = e.target.closest('[data-toggle]');
+  if (tg) { const id = tg.dataset.toggle; pdc.abiertos[id] = !pdc.abiertos[id]; tg.closest('.pdc-tipo').classList.toggle('abierto', !!pdc.abiertos[id]); return; }
+  const ag = e.target.closest('[data-agregar]');
+  if (ag) { pdcAbrirWizard([ag.dataset.agregar], true); return; }
+  const br = e.target.closest('[data-borrar]');
+  if (br) { pdcBorrarEvento(br.dataset.borrar); return; }
+  if (e.target.closest('#pdc-btn-sync')) { pdc.syncErr = ''; pdcEnviar().then(function () { return pdcTraer(); }); }
+});
+document.getElementById('sec-pdc').addEventListener('change', function (e) {
+  if (e.target.id === 'pdc-fecha-in' && e.target.value) pdcElegirDia(e.target.value);
+});
+
+async function pdcBorrarEvento(id) {
+  const e = pdc.recs[id];
+  if (!e) return;
+  const t = pdcTipo(e.tipoId);
+  const ok = await mostrarConfirm('Borrar evento', '¿Borrar "' + pdcNombreValor(e) + '" de las ' + pdcHora(e.fechaHora) +
+    (t ? ' (' + t.tipo + ')' : '') + '?\n\nEn el Sheet queda marcado como borrado.', { textoAceptar: 'Borrar', danger: true });
+  if (ok) pdcDeshacer([id]);
+}
+
+function pdcFechaHoraDefault(dia) {
+  if (dia === hoyISO()) return new Date();
+  const d = _parseISO(dia); d.setHours(12, 0, 0, 0);   // un día anterior: mediodía (se puede cambiar)
+  return d;
+}
+
+async function pdcTodoSinNovedad() {
+  const dia = pdcDiaSel();
+  const st = pdcEstadoDia(dia);
+  const tipos = st.faltan.filter(function (t) { return pdcSinNovedadDe(t.tipoId); });
+  const sinValor = st.faltan.filter(function (t) { return !pdcSinNovedadDe(t.tipoId); });
+  if (!tipos.length) return;
+  const ok = await mostrarConfirm('Todo sin novedad',
+    'Se cargan ' + tipos.length + ' eventos "Sin novedad" en los tipos sin registro del ' + pdcDiaLabel(dia) + ':\n\n' +
+    tipos.map(function (t) { return t.tipo; }).join(', ') +
+    (sinValor.length ? '\n\nQuedan afuera (no tienen valor "sin novedad"): ' + sinValor.map(function (t) { return t.tipo; }).join(', ') : ''),
+    { textoAceptar: 'Cargar ' + tipos.length });
+  if (!ok) return;
+  const fh = pdcFechaHoraDefault(dia), grupo = uuid();
+  const ops = tipos.map(function (t) {
+    return { op: 'add', rec: { id: uuid(), fecha: dia, fechaHora: pdcIsoLocal(fh), tipoId: t.tipoId, valorId: pdcSinNovedadDe(t.tipoId).valorId,
+      observacion: '', origen: 'todo_sin_novedad', grupoId: grupo } };
+  });
+  if (navigator.vibrate) navigator.vibrate(40);
+  pdcHacerOps(ops, PDC_FLUSH_MS);
+  pdcToast('✓ ' + tipos.length + (tipos.length === 1 ? ' tipo' : ' tipos') + ' sin novedad · ' + pdcDiaLabel(dia), ops.map(function (o) { return o.rec.id; }));
+}
+
+// ── Wizard (una pantalla por tipo) ──
+const wiz = { tipos: [], i: 0, dia: '', hora: null, sel: [], obs: '', panelHora: false, uno: false };
+
+function pdcCompletarParte() {
+  const st = pdcEstadoDia(pdcDiaSel());
+  pdcAbrirWizard(st.faltan.map(function (t) { return t.tipoId; }), false);
+}
+function pdcAbrirWizard(tipoIds, uno) {
+  if (!pdc.cat || !tipoIds.length) return;
+  Object.assign(wiz, { tipos: tipoIds, i: 0, dia: pdcDiaSel(), hora: null, sel: [], obs: '', panelHora: false, uno: !!uno });
+  document.getElementById('pdc-wiz').classList.add('open');
+  renderWiz();
+}
+function pdcCerrarWizard() { document.getElementById('pdc-wiz').classList.remove('open'); renderPdc(); }
+function wizFechaHora() { return wiz.hora || pdcFechaHoraDefault(wiz.dia); }
+function wizObsObligatoria() { return wiz.sel.some(function (id) { const v = pdcValor(id); return v && v.obsObligatoria; }); }
+function wizPuedeRegistrar() { return wiz.sel.length > 0 && !(wizObsObligatoria() && !wiz.obs.trim()); }
+
+function renderWiz() {
+  const t = pdcTipo(wiz.tipos[wiz.i]);
+  if (!t) { pdcCerrarWizard(); return; }
+  const vals = pdcValoresDe(t.tipoId);
+  const fh = wizFechaHora(), hoy = hoyISO();
+  const diaEv = pdcDayKey(fh);
+  const horaTxt = !wiz.hora && wiz.dia === hoy ? 'Ahora' : pdcHora(pdcIsoLocal(fh));
+  const obsReq = wizObsObligatoria();
+  const pasos = wiz.uno ? '' : '<div class="wiz-pasos">' + wiz.tipos.map(function (x, k) {
+    return '<i class="' + (k < wiz.i ? 'hecho' : k === wiz.i ? 'act' : '') + '"></i>';
+  }).join('') + '</div>';
+  const quedan = wiz.tipos.length - wiz.i - 1;
+  document.getElementById('wiz-caja').innerHTML =
+    '<div class="wiz-cab"><div style="flex:1;min-width:0">' +
+    '<div class="wiz-paso">' + (wiz.uno ? 'Agregar evento' : 'Tipo ' + (wiz.i + 1) + ' de ' + wiz.tipos.length) + ' · ' + escaparHtml(pdcDiaLabel(wiz.dia)) + '</div>' +
+    '<div class="wiz-tipo">' + escaparHtml(t.tipo) + '</div>' +
+    (t.ayuda ? '<div class="wiz-ayuda">' + escaparHtml(t.ayuda) + '</div>' : '') + pasos + '</div>' +
+    '<button type="button" class="modal-close" data-w="cerrar" title="Cerrar">×</button></div>' +
+    '<div class="wiz-cuerpo">' +
+    '<div class="wiz-hora"><span>🕒 <b>' + escaparHtml(horaTxt) + '</b>' + (diaEv !== wiz.dia ? ' · va al parte del ' + escaparHtml(pdcDiaLabel(diaEv)) : '') + '</span>' +
+    '<button type="button" class="btn btn-secondary btn-sm" data-w="hora">' + (wiz.panelHora ? 'Listo' : 'Cambiar hora') + '</button></div>' +
+    (wiz.panelHora ? '<div class="wiz-hora-panel">' +
+      (wiz.dia === hoy ? '<div class="wiz-rapidos"><button type="button" data-hace="0">Ahora</button><button type="button" data-hace="10">hace 10\'</button>' +
+        '<button type="button" data-hace="30">30\'</button><button type="button" data-hace="60">1 h</button><button type="button" data-hace="120">2 h</button></div>' : '') +
+      '<input type="datetime-local" class="form-control" id="wiz-dt" value="' + pdcDtLocal(fh) + '" max="' + pdcDtLocal(new Date()) + '"></div>' : '') +
+    '<div class="wiz-valores' + (t.multiple ? ' multi' : '') + '">' + vals.map(function (v) {
+      const sel = wiz.sel.indexOf(v.valorId) !== -1;
+      return '<button type="button" class="wiz-valor' + (v.esSinNovedad ? ' sinnov' : '') + (sel ? ' sel' : '') + '" data-valor="' + escaparHtml(v.valorId) + '">' +
+        (t.multiple ? '<span class="wv-check">' + (sel ? '✓' : '') + '</span>' : '') +
+        '<span class="wv-txt">' + escaparHtml(v.valor) + '</span>' +
+        (v.esSinNovedad ? '' : '<span class="wv-meta">' + pdcImpactoHtml(v.impacto) + (v.obsObligatoria ? ' ✎' : '') + '</span>') + '</button>';
+    }).join('') + '</div>' +
+    (t.multiple ? '<div class="wiz-nota">Podés marcar varios. "' + escaparHtml((vals.find(function (v) { return v.esSinNovedad; }) || {}).valor || 'Sin novedad') + '" desmarca los demás.</div>' : '') +
+    '<label class="wiz-obs-lbl" for="wiz-obs">Observación ' + (obsReq ? '<span class="req">* obligatoria</span>' : '(opcional)') + '</label>' +
+    '<textarea class="form-control' + (obsReq && !wiz.obs.trim() ? ' req-vacio' : '') + '" id="wiz-obs" rows="2" maxlength="2000" placeholder="Qué pasó, dónde, quién…">' + escaparHtml(wiz.obs) + '</textarea>' +
+    '</div>' +
+    '<div class="wiz-pie">' +
+    (wiz.uno ? '<button type="button" data-w="cerrar">Cancelar</button>' : '<button type="button" data-w="saltar">' + (quedan ? 'Saltar' : 'Terminar') + '</button>') +
+    '<button type="button" class="pri" data-w="registrar"' + (wizPuedeRegistrar() ? '' : ' disabled') + '>Registrar' + (wiz.sel.length > 1 ? ' (' + wiz.sel.length + ')' : '') + '</button></div>';
+}
+
+function wizSiguiente() {
+  wiz.i++; wiz.sel = []; wiz.obs = '';
+  if (wiz.uno || wiz.i >= wiz.tipos.length) { pdcCerrarWizard(); return; }
+  renderWiz();
+  const c = document.querySelector('#wiz-caja .wiz-cuerpo');
+  if (c) c.scrollTop = 0;
+}
+
+function wizRegistrar() {
+  if (!wizPuedeRegistrar()) return;
+  const t = pdcTipo(wiz.tipos[wiz.i]);
+  const fh = wizFechaHora();
+  if (fh.getTime() > Date.now() + 60000) { mostrarAviso('La hora del evento no puede ser futura.'); return; }
+  const fecha = pdcDayKey(fh);
+  const grupo = wiz.sel.length > 1 ? uuid() : '';
+  const ops = wiz.sel.map(function (valorId) {
+    return { op: 'add', rec: { id: uuid(), fecha: fecha, fechaHora: pdcIsoLocal(fh), tipoId: t.tipoId, valorId: valorId,
+      observacion: wiz.obs.trim(), origen: 'wizard', grupoId: grupo } };
+  });
+  if (navigator.vibrate) navigator.vibrate(40);
+  pdcHacerOps(ops, PDC_FLUSH_MS);
+  pdcToast('✓ ' + t.tipo + ': ' + wiz.sel.map(function (id) { return pdcValor(id).valor; }).join(', ') + ' · ' + pdcHora(pdcIsoLocal(fh)),
+    ops.map(function (o) { return o.rec.id; }));
+  wizSiguiente();
+}
+
+document.getElementById('pdc-wiz').addEventListener('click', function (e) {
+  const v = e.target.closest('[data-valor]');
+  if (v) {
+    const t = pdcTipo(wiz.tipos[wiz.i]), val = pdcValor(v.dataset.valor);
+    if (!t || !val) return;
+    if (t.multiple) {
+      const i = wiz.sel.indexOf(val.valorId);
+      if (i !== -1) wiz.sel.splice(i, 1);
+      else if (val.esSinNovedad) wiz.sel = [val.valorId];
+      else {
+        wiz.sel = wiz.sel.filter(function (id) { const x = pdcValor(id); return x && !x.esSinNovedad; });
+        wiz.sel.push(val.valorId);
+      }
+      renderWiz();
+    } else {
+      wiz.sel = [val.valorId];
+      if (val.obsObligatoria && !wiz.obs.trim()) {   // pide la observación antes de registrar
+        renderWiz();
+        const o = document.getElementById('wiz-obs');
+        if (o) o.focus();
+      } else wizRegistrar();
+    }
+    return;
+  }
+  const h = e.target.closest('[data-hace]');
+  if (h) { const m = Number(h.dataset.hace); wiz.hora = m ? new Date(Date.now() - m * 60000) : null; renderWiz(); return; }
+  const b = e.target.closest('[data-w]');
+  if (!b) { if (e.target.id === 'pdc-wiz') pdcCerrarWizard(); return; }
+  const a = b.dataset.w;
+  if (a === 'cerrar') pdcCerrarWizard();
+  else if (a === 'saltar') wizSiguiente();
+  else if (a === 'registrar') wizRegistrar();
+  else if (a === 'hora') { wiz.panelHora = !wiz.panelHora; renderWiz(); }
+});
+document.getElementById('pdc-wiz').addEventListener('input', function (e) {
+  if (e.target.id !== 'wiz-obs') return;
+  wiz.obs = e.target.value;
+  e.target.classList.toggle('req-vacio', wizObsObligatoria() && !wiz.obs.trim());
+  const btn = document.querySelector('#wiz-caja [data-w="registrar"]');
+  if (btn) btn.disabled = !wizPuedeRegistrar();
+});
+document.getElementById('pdc-wiz').addEventListener('change', function (e) {
+  if (e.target.id !== 'wiz-dt' || !e.target.value) return;
+  const d = new Date(e.target.value);
+  if (isNaN(d)) return;
+  if (d.getTime() > Date.now() + 60000) { mostrarAviso('La hora del evento no puede ser futura.'); renderWiz(); return; }
+  wiz.hora = d;
+  renderWiz();
+});
+
+// ── Toast con Deshacer (RegMed) ──
+let pdcToastIds = null, pdcToastTimer = null;
+function pdcToast(txt, ids) {
+  pdcToastIds = ids;
+  const el = document.getElementById('pdc-toast');
+  document.getElementById('pdc-toast-txt').textContent = txt;
+  el.classList.add('visible');
+  const prog = document.getElementById('pdc-toast-prog');
+  prog.style.transition = 'none'; prog.style.width = '100%';
+  requestAnimationFrame(function () { requestAnimationFrame(function () { prog.style.transition = 'width ' + PDC_TOAST_MS + 'ms linear'; prog.style.width = '0%'; }); });
+  clearTimeout(pdcToastTimer);
+  pdcToastTimer = setTimeout(pdcOcultarToast, PDC_TOAST_MS);
+}
+function pdcOcultarToast() { document.getElementById('pdc-toast').classList.remove('visible'); pdcToastIds = null; clearTimeout(pdcToastTimer); }
+document.getElementById('pdc-toast-undo').addEventListener('click', function () {
+  if (pdcToastIds) pdcDeshacer(pdcToastIds);
+  pdcOcultarToast();
+  if (document.getElementById('pdc-wiz').classList.contains('open')) renderWiz();
+});
+
+// ── Entrada a la sección + timers ──
+/** auto = navegación del usuario: si los datos tienen más de 1 minuto, se refrescan. */
+function pdcAlEntrar(auto) {
+  if (!estado.obra) return;
+  pdcAbrirObra(estado.obra.obraId);
+  renderPdc();
+  if (auto && !estado.offline && !estado.cargando && Date.now() - pdc.ultimoPull > 60000) {
+    pdcTraer().then(function () { if (pdc.queue.length) pdcEnviar(); });
+  }
+}
+setInterval(function () { if (pdc.queue.length && !pdc.flushing && estado.email && !estado.offline) pdcEnviar(); }, PDC_RETRY_MS);
+setInterval(function () {
+  if (!document.hidden && estado.seccion === 'pdc' && !pdc.queue.length && estado.email && pdc.obraId && !estado.offline && !estado.cargando) pdcTraer();
+}, PDC_PULL_MS);
+window.addEventListener('online', function () {
+  if (estado.offline) { reconectar(); return; }
+  if (pdc.queue.length) pdcEnviar();
+});
+document.addEventListener('visibilitychange', function () {
+  if (document.hidden || estado.seccion !== 'pdc' || !pdc.obraId || !estado.email || estado.offline) return;
+  renderPdc();
+  pdcTraer().then(function () { if (pdc.queue.length) pdcEnviar(); });
+});
+
+// ══════════════════════════════════════════════
+// v7.0.0 — MODO CELULAR (PdC + Buscar) Y APERTURA SIN SEÑAL
+// ══════════════════════════════════════════════
+const MQ_CEL = window.matchMedia('(max-width: 640px)');
+function seccionInicial() { return estado.modoCel ? (estado.puedePdC ? 'pdc' : 'buscar') : 'inicio'; }
+function aplicarModoCel() {
+  estado.modoCel = MQ_CEL.matches;
+  document.body.classList.toggle('modo-cel', estado.modoCel);
+  if (estado.modoCel && estado.obra && document.getElementById('app').style.display !== 'none' && SECCIONES_CEL.indexOf(estado.seccion) === -1) {
+    estado.seccionAuto = true;
+    showSection(seccionInicial(), true);
+  }
+}
+if (MQ_CEL.addEventListener) MQ_CEL.addEventListener('change', aplicarModoCel); else MQ_CEL.addListener(aplicarModoCel);
+aplicarModoCel();
+/** En el celular Ver/Editar es solo lectura (D19). */
+function editaAqui() { return estado.puedeEditar && !estado.modoCel; }
+function pintarNavPdc() { document.getElementById('nav-pdc').classList.toggle('hidden', !estado.puedePdC); }
+
+/** Sin señal al abrir: si este dispositivo ya tiene el PdC de la obra guardado, se entra igual (D20). */
+function entrarSinConexion(email, obra) {
+  const sesion = leerSesion();
+  estado.email = email;
+  estado.nombre = (sesion && sesion.nombreApellido) || email;
+  estado.offline = true;
+  estado.obra = { obraId: obra.obraId, codigoObra: obra.codigoObra, nombreObra: obra.nombreObra };
+  resetDatosObra();
+  mostrarPantalla('app');
+  document.getElementById('hdr-name').textContent = estado.nombre;
+  pintarHeaderObra();
+  habilitarNav(false);
+  estado.puedePdC = true;
+  pintarNavPdc();
+  document.getElementById('btn-cambiar-obra').disabled = true;
+  pdcAbrirObra(obra.obraId);
+  estado.seccionAuto = true;
+  showSection('pdc', true);
+  tareaError('red', 'Sin conexión: el Parte de Contrato funciona igual y se envía cuando vuelva la señal.',
+    [{ texto: 'Reintentar', fn: reconectar, primario: true }]);
+}
+/** Vuelve la señal: revalida la sesión y carga todo. Un rechazo NO borra la cola del PdC. */
+async function reconectar() {
+  if (!estado.offline || estado.reconectando) return;
+  estado.reconectando = true;
+  tareaIniciar('red', 'Reconectando…');
+  try {
+    const res = await llamarBackend('inicializarSesion', { email: estado.email });
+    if (!res.ok) {
+      estado.offline = false;
+      tareasLimpiar();
+      borrarSesion();
+      mostrarPantalla('login-screen');
+      mostrarTextoErrorAuth(res.motivo);
+      mostrarPasoLogin('error-auth');
+      return;
+    }
+    estado.offline = false;
+    tareaQuitar('red');
+    estado.nombre = res.nombreApellido || estado.nombre;
+    estado.esAdmin = !!res.esAdmin;
+    estado.obras = res.obras || [];
+    document.getElementById('btn-cambiar-obra').disabled = false;
+    const vigente = estado.obras.find(function (o) { return o.obraId === estado.obra.obraId; });
+    if (!vigente) { renderObras(); return; }
+    renderPdc();
+    await cargarDatosObra(false);
+  } catch (err) {
+    tareaError('red', 'Sigue sin conexión. El Parte de Contrato funciona igual y se envía cuando vuelva la señal.',
+      [{ texto: 'Reintentar', fn: reconectar, primario: true }]);
+    pdcPintarSync();
+  } finally {
+    estado.reconectando = false;
+  }
+}
+setInterval(function () { if (estado.offline && navigator.onLine) reconectar(); }, PDC_RETRY_MS);
+
+// ── Service worker (v7.0.0): la app abre sin señal ──
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js').catch(function (err) { console.warn('[PWA] SW:', err); });
+  });
 }
 
 // ══════════════════════════════════════════════
