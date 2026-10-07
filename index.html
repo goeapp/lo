@@ -3,8 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra v7.0.1</title>
+<title>LibroObra v7.0.2</title>
 <!--
+  index_libroobra_v7_0_2.html — LibroObra v7.0.2 (07-oct-2026)
+  Backend: gas_libroobra_v7_0_2.gs (nuevo: pdcAjustar). sw.js: sw_libroobra_v7_0_2.js.
+  Diseño: Diseno_LibroObra_PdC_v1.1.0.md §6 (vista Semana).
+
+  QUÉ CAMBIÓ EN v7.0.2 (respecto a v7.0.1) — entrega "Semana" + ajustes:
+   - Computadora: selector [ Hoy | Semana ] en la franja; el PdC abre en Hoy.
+   - Vista Semana (lunes a domingo, ◀ ▶, "Semana actual"): grilla tipos ×
+     días con el impacto EFECTIVO más alto (color 0–3) y la inicial del
+     responsable; faltantes en blanco con borde rojo; antes de
+     PDC_FECHA_INICIO y días futuros en gris. Clic en una celda: sus
+     eventos a la derecha con propuesto y ajustado. "Ajustar": impacto y/o
+     responsable con motivo obligatorio (pdcAjustar; el propuesto no se
+     pisa; "Sin ajuste" en los dos = quitar el ajuste). Celda faltante:
+     "Cargar en Hoy". Pie: días afectados y días con impacto 3 por
+     responsable, y celdas sin cargar.
+   - "↓ Informe semanal" (PDF apaisado): 1) resumen, 2) grilla, 3) anexo
+     con el detalle de eventos (empieza en hoja nueva: se imprime aparte).
+   - Ajustes de la v7.0.1: valores como chips compactos en la computadora;
+     Registrar cierra siempre el panel; un solo panel abierto a la vez.
+   - La ventana de datos sigue a la vista: si el día o la semana elegidos
+     son más viejos que PDC_DIAS_ATRAS, el pull periódico los mantiene.
+
+  (historia anterior)
   index_libroobra_v7_0_1.html — LibroObra v7.0.1 (07-oct-2026)
   Backend: gas_libroobra_v7_0_0.gs (SIN CAMBIOS). sw.js: sw_libroobra_v7_0_1.js.
 
@@ -1072,7 +1095,69 @@ body:not(.modo-cel) .pdc-col-tipos { padding: 2px 6px 2px 2px; }
 body:not(.modo-cel) .pdc-col-linea { display: block; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
 body:not(.modo-cel) .pdc-cuerpo.sin-cat .pdc-col-linea { display: none; }
 body:not(.modo-cel) .pdc-tipo-det .pdc-ev-lista { display: none; }   /* los eventos se ven en la línea de tiempo */
-body:not(.modo-cel) .wiz-valores { display: grid; grid-template-columns: 1fr 1fr; }
+/* v7.0.2 — computadora: valores como chips compactos (se acomodan en renglones) */
+body:not(.modo-cel) .wiz-valores { flex-direction: row; flex-wrap: wrap; gap: 6px; }
+body:not(.modo-cel) .wiz-valor { width: auto; min-height: 34px; padding: 5px 11px; font-size: .84rem; gap: 7px; border-width: 1.5px; border-radius: 99px; }
+body:not(.modo-cel) .wiz-valor .wv-check { width: 15px; height: 15px; border-radius: 4px; border-width: 1.5px; font-size: .64rem; }
+body:not(.modo-cel) .wiz-valor .wv-txt { flex: 0 1 auto; white-space: nowrap; }
+body:not(.modo-cel) .wiz-valor .wv-meta { font-size: .72rem; }
+body:not(.modo-cel) .wiz-valor .pdc-imp { min-width: 17px; height: 17px; font-size: .62rem; }
+
+/* v7.0.2 — selector Hoy | Semana (solo computadora) */
+.pdc-vistas { display: inline-flex; border: 1px solid var(--border); border-radius: 99px; padding: 2px; background: var(--bg); margin-left: auto; margin-right: 8px; }
+.pdc-vistas button { border: none; background: none; padding: 4px 14px; border-radius: 99px; font-size: .78rem; font-weight: 600; color: var(--muted); }
+.pdc-vistas button.on { background: var(--accent2); color: #fff; }
+body.modo-cel .pdc-vistas { display: none !important; }
+.pdc-sem-acc, .pdc-semana { display: none; }
+#sec-pdc.vista-semana .pdc-sem-acc { display: grid; grid-template-columns: 1fr; }
+#sec-pdc.vista-semana #pdc-acciones, #sec-pdc.vista-semana #pdc-cuerpo { display: none !important; }
+body:not(.modo-cel) #sec-pdc.vista-semana .pdc-semana { display: grid; grid-template-columns: 1fr minmax(340px, 400px); gap: 16px; height: var(--pdc-cuerpo-h, auto); min-height: 280px; }
+.pdc-sem-nav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pdc-sem-nav button { border: 1px solid var(--border); background: var(--surface); border-radius: 99px; padding: 5px 12px; font-size: .78rem; font-weight: 600; color: var(--accent2); }
+.pdc-sem-nav button:disabled { opacity: .4; cursor: default; }
+.pdc-sem-izq { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 14px; }
+.pdc-sem-det { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+.pdc-sem-tabla { width: 100%; border-collapse: separate; border-spacing: 4px; table-layout: fixed; }
+.pdc-sem-tabla th { font-size: .7rem; font-weight: 700; color: var(--muted); text-align: center; padding: 2px 0 4px; }
+.pdc-sem-tabla th.hoy { color: var(--accent); }
+.pdc-sem-tabla th small { display: block; font-weight: 600; font-size: .64rem; }
+.pdc-sem-tabla th small.falta { color: #b91c1c; }
+.pdc-sem-tabla th.pdc-sem-tipo { text-align: left; font-size: .78rem; color: var(--text); font-weight: 600; width: 190px; padding-right: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pdc-celda { width: 100%; height: 34px; border-radius: 7px; border: 1px solid transparent; display: flex; align-items: center; justify-content: center; gap: 4px; font-weight: 700; font-size: .82rem; position: relative; }
+.pdc-celda.i0 { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+.pdc-celda.i1 { background: #fef9c3; color: #854d0e; border-color: #fde68a; }
+.pdc-celda.i2 { background: #ffedd5; color: #9a3412; border-color: #fdba74; }
+.pdc-celda.i3 { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+.pdc-celda.falta { background: #fff; border: 2px solid #f87171; }
+.pdc-celda.fuera, .pdc-celda.futuro { background: #f1f5f9; color: #cbd5e1; border-color: #e2e8f0; cursor: default; }
+.pdc-celda.sel { box-shadow: 0 0 0 2px var(--accent2); }
+.pdc-celda .cr { font-size: .6rem; font-weight: 800; border-radius: 4px; padding: 0 3px; background: rgba(255,255,255,.75); }
+.pdc-celda .cr.r-cliente { color: #1e40af; } .pdc-celda .cr.r-neutral { color: #475569; } .pdc-celda .cr.r-propio { color: #5b21b6; }
+.pdc-celda .ca { position: absolute; top: 1px; right: 4px; font-size: .58rem; }
+.pdc-celda .cn { position: absolute; bottom: 0; right: 4px; font-size: .56rem; font-weight: 600; opacity: .7; }
+.pdc-sem-leyenda { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: .7rem; color: var(--muted); margin: 8px 4px 0; align-items: center; }
+.pdc-sem-leyenda i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; border: 1px solid var(--border); }
+.pdc-sem-pie { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 10px; }
+.pdc-sem-pie h4 { font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0 0 6px; }
+.pdc-sem-resumen { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.pdc-sem-resumen th, .pdc-sem-resumen td { padding: 5px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+.pdc-sem-resumen th { font-size: .66rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.pdc-sem-resumen td b { font-variant-numeric: tabular-nums; }
+.pdc-sem-resumen td small { color: var(--muted); }
+.pdc-sem-det-cab { position: sticky; top: 0; z-index: 2; background: var(--surface); padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.pdc-sem-det-cab b { color: var(--accent2); }
+.pdc-sem-det-cuerpo { padding: 4px 16px 14px; }
+.pdc-sem-vacio { color: var(--muted); font-size: .84rem; padding: 26px 16px; text-align: center; line-height: 1.5; }
+.pdc-aj { padding: 10px 0; border-bottom: 1px dashed var(--border); font-size: .84rem; }
+.pdc-aj:last-child { border-bottom: none; }
+.pdc-aj-fila { display: flex; gap: 10px; align-items: flex-start; }
+.pdc-aj-prop { font-size: .74rem; color: var(--muted); margin-top: 4px; }
+.pdc-aj-ajus { font-size: .74rem; margin-top: 4px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 5px 8px; color: #1e3a8a; }
+.pdc-aj-ajus i { color: #475569; }
+.pdc-aj-form { margin-top: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.pdc-aj-form .fila2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pdc-aj-form label { font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); display: block; margin-bottom: 3px; }
+.pdc-aj-form .botones { display: flex; gap: 8px; justify-content: flex-end; }
 body:not(.modo-cel) .pdc-pie { padding-top: 10px; }
 body.pdc-escritorio #main-content { padding-bottom: 16px; }
 body.modo-cel .pdc-cuerpo { min-height: calc(100vh - var(--hdr-alto, 88px)); }   /* margen para que la franja compacta no titile */
@@ -1120,7 +1205,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
   <div class="caja">
     <span class="caja-emoji">📋</span>
     <div class="caja-logo">LibroObra</div>
-    <div class="caja-version" id="version-login">v7.0.1</div>
+    <div class="caja-version" id="version-login">v7.0.2</div>
     <div class="caja-sub">Registro de comunicaciones de obra</div>
 
     <div id="paso-email" class="login-paso activo">
@@ -1188,7 +1273,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
     <button class="hdr-btn" id="btn-cambiar-obra" onclick="cambiarObra()">Cambiar obra</button>
     <button class="hdr-btn hdr-btn-instalar hidden" id="btn-instalar">Instalar</button>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version" id="version-app">v7.0.1</span>
+    <span class="hdr-version" id="version-app">v7.0.2</span>
     <button class="hdr-btn" onclick="confirmarCerrarSesion()">Salir</button>
   </header>
 
@@ -1390,6 +1475,9 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
               <div class="pdc-titulo">Parte de Contrato</div>
               <div class="pdc-dia" id="pdc-dia-label">—</div>
             </div>
+            <div class="pdc-vistas hidden" id="pdc-vistas" role="tablist">
+              <button type="button" data-vista="hoy" class="on">Hoy</button><button type="button" data-vista="semana">Semana</button>
+            </div>
             <span class="pdc-pill" id="pdc-pill">—</span>
           </div>
           <div class="pdc-prog"><div class="pdc-barra" id="pdc-barra"><i></i></div><span class="pdc-prog-txt" id="pdc-prog-txt"></span></div>
@@ -1399,6 +1487,9 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
         <div class="pdc-acciones hidden" id="pdc-acciones">
           <button type="button" class="pdc-btn-grande pri" id="pdc-btn-completar" onclick="pdcCompletarParte()">Completar parte</button>
           <button type="button" class="pdc-btn-grande sec" id="pdc-btn-sinnov" onclick="pdcTodoSinNovedad()">Todo sin novedad</button>
+        </div>
+        <div class="pdc-acciones pdc-sem-acc" id="pdc-sem-acc">
+          <button type="button" class="pdc-btn-grande pri" id="pdc-btn-informe" onclick="pdcInformeSemanal()">↓ Informe semanal</button>
         </div>
         </div>
         <div class="pdc-cuerpo" id="pdc-cuerpo">
@@ -1410,6 +1501,14 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
             <div class="pdc-linea-cab" id="pdc-linea-cab">Línea de tiempo</div>
             <div class="pdc-linea" id="pdc-linea"></div>
           </div>
+        </div>
+        <!-- v7.0.2 — vista Semana (solo computadora) -->
+        <div class="pdc-semana" id="pdc-semana">
+          <div class="pdc-col pdc-sem-izq" id="pdc-sem-izq">
+            <div class="pdc-sem-grilla" id="pdc-sem-grilla"></div>
+            <div class="pdc-sem-pie" id="pdc-sem-pie"></div>
+          </div>
+          <div class="pdc-col pdc-sem-det" id="pdc-sem-det"></div>
         </div>
       </div>
     </section>
@@ -1713,6 +1812,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
 
 <!-- PDF de hitos (fuera de pantalla) -->
 <div id="pdf-render-hitos" style="position:fixed;left:-9999px;top:0;width:750px;background:#fff;z-index:-1;font-family:'DM Sans',sans-serif;padding:32px"></div>
+<div id="pdf-render-pdc" style="position:fixed;left:-12000px;top:0;width:1100px;background:#fff;z-index:-1;font-family:'DM Sans',sans-serif"></div>
 
 <!-- ═══════════════ SESIÓN (Ctrl+Alt+U) ═══════════════ -->
 <div id="session-dialog-overlay" onclick="if(event.target===this) cerrarSessionDialog()">
@@ -1751,7 +1851,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
 // ══════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════
-const APP_VERSION = 'v7.0.1';
+const APP_VERSION = 'v7.0.2';
 const API_URL = 'https://script.google.com/macros/s/AKfycbxDN2F_K6z4wQXDJAyyZ6EdoSqoQgHv8d8f7gXGo-QYdke3DXW6hvZtEnmEy9xFpjTO/exec';
 const SESION_KEY = 'lo_sesion';
 const OBRA_KEY = 'lo_obra_actual';
@@ -4930,7 +5030,11 @@ const pdc = {
   desde: '',               // inicio de la ventana que trajo el servidor
   sinPdC: false, mensaje: '', cargando: false, ultimoPull: 0, pullSeq: 0, abiertos: {},
   forms: {},               // v7.0.1 — carga en el panel del tipo: { tipoId: {sel, obs, hora, panelHora} }
-  secuencia: ''            // v7.0.1 — "Completar parte": tipo abierto en la recorrida
+  secuencia: '',           // v7.0.1 — "Completar parte": tipo abierto en la recorrida
+  vista: 'hoy',            // v7.0.2 — computadora: 'hoy' | 'semana'
+  semana: '',              // v7.0.2 — lunes de la semana a la vista ('' = la actual)
+  celda: null,             // v7.0.2 — {tipoId, dia} elegida en la grilla
+  ajustando: '', ajuste: null, guardandoAjuste: false   // v7.0.2 — formulario de ajuste abierto (id del evento)
 };
 
 // ── Dispositivo (localStorage, por obra) ──
@@ -4962,7 +5066,7 @@ function pdcAbrirObra(obraId) {
     obraId: obraId, cat: pdcCatGuardado(obraId), recs: pdcLsGet(pdcK('recs', obraId), {}),
     queue: pdcLsGet(pdcK('queue', obraId), []), lastSync: pdcLsGet(pdcK('last', obraId), null),
     flushing: false, inflight: 0, syncErr: '', dia: '', desde: '', sinPdC: false, mensaje: '',
-    cargando: false, ultimoPull: 0, abiertos: {}, forms: {}, secuencia: ''
+    cargando: false, ultimoPull: 0, abiertos: {}, forms: {}, secuencia: '', semana: '', celda: null, ajustando: '', ajuste: null
   });
 }
 
@@ -5028,7 +5132,8 @@ function pdcEventoLocal(rec) {
   return {
     id: rec.id, fecha: rec.fecha, fechaHora: rec.fechaHora, tipoId: rec.tipoId, valorId: rec.valorId,
     observacion: rec.observacion || '', origen: rec.origen || 'wizard', grupoId: rec.grupoId || '',
-    estado: 'activo', impacto: v ? v.impacto : '', responsable: v ? v.responsable : '', usuario: estado.email
+    estado: 'activo', impacto: v ? v.impacto : '', responsable: v ? v.responsable : '', usuario: estado.email,
+    impactoProp: v ? v.impacto : '', respProp: v ? v.responsable : '', impactoAjust: '', respAjust: ''   // v7.0.2
   };
 }
 function pdcAplicarOp(map, op) {
@@ -5106,6 +5211,7 @@ async function pdcEnviar() {
 /** Trae catálogo + eventos (desde = 'yyyy-MM-dd' opcional para mirar días más viejos que la ventana). */
 async function pdcTraer(desde) {
   if (!pdc.obraId || !estado.email || !estado.obra) return;
+  desde = desde || pdcDesdeVista();   // v7.0.2 — un día o una semana viejos no se pierden con el pull periódico
   const obraId = pdc.obraId, seq = ++pdc.pullSeq;
   pdc.cargando = true;
   renderPdc();
@@ -5180,6 +5286,8 @@ function renderPdc() {
   aviso.className = 'pdc-aviso' + (avisoCls ? ' ' + avisoCls : '') + (avisoTxt ? '' : ' hidden');
   aviso.textContent = avisoTxt;
   if (!pdc.cat) {
+    document.getElementById('sec-pdc').classList.remove('vista-semana');
+    document.getElementById('pdc-vistas').classList.add('hidden');
     acciones.classList.add('hidden');
     document.getElementById('pdc-barra').classList.add('hidden');
     document.getElementById('pdc-prog-txt').textContent = '';
@@ -5192,6 +5300,13 @@ function renderPdc() {
     return;
   }
   document.getElementById('pdc-cuerpo').classList.remove('sin-cat');
+  // v7.0.2 — selector Hoy | Semana (solo computadora)
+  const enSemana = pdcEnSemana();
+  document.getElementById('sec-pdc').classList.toggle('vista-semana', enSemana);
+  const vistas = document.getElementById('pdc-vistas');
+  vistas.classList.toggle('hidden', estado.modoCel);
+  vistas.querySelectorAll('[data-vista]').forEach(function (b) { b.classList.toggle('on', b.dataset.vista === (enSemana ? 'semana' : 'hoy')); });
+  if (enSemana) { const f = pdcCapturarFoco(); renderSemana(); pdcRestaurarFoco(f); pdcAjustarAlto(); return; }
   const st = pdcEstadoDia(dia);
   const total = st.tipos.length, hechos = st.hechos;
   const barra = document.getElementById('pdc-barra');
@@ -5277,7 +5392,7 @@ function pdcEvHtml(e, pend, conTipo) {
 /** Re-render sin perder lo que se está escribiendo (pull cada 2 min, sincronización, etc.). */
 function pdcCapturarFoco() {
   const a = document.activeElement;
-  if (!a || !a.id || !document.getElementById('pdc-lista').contains(a)) return null;
+  if (!a || !a.id || !document.getElementById('sec-pdc').contains(a)) return null;   // v7.0.2: también el motivo del ajuste
   let s = null, f = null;
   try { s = a.selectionStart; f = a.selectionEnd; } catch (x) { /* datetime-local */ }
   return { id: a.id, s: s, f: f };
@@ -5300,6 +5415,7 @@ function pdcElegirDia(d) {
 }
 
 document.getElementById('sec-pdc').addEventListener('click', function (e) {
+  if (pdcSemanaClick(e)) return;   // v7.0.2 — selector, grilla y ajuste
   const dia = e.target.closest('[data-dia]');
   if (dia) { pdcElegirDia(dia.dataset.dia); return; }
   const tg = e.target.closest('[data-toggle]');
@@ -5322,6 +5438,7 @@ document.getElementById('sec-pdc').addEventListener('click', function (e) {
   else if (a === 'cerrar') pdcCerrarTipo(tipoId);
 });
 document.getElementById('sec-pdc').addEventListener('input', function (e) {
+  if (e.target.closest('.pdc-aj-form')) { pdcAjusteInput(e.target); return; }   // v7.0.2
   const fm = e.target.closest('[data-form]');
   if (!fm || !e.target.classList.contains('pdc-obs')) return;
   const f = pdcForm(fm.dataset.form);
@@ -5331,6 +5448,7 @@ document.getElementById('sec-pdc').addEventListener('input', function (e) {
   if (btn) btn.disabled = !pdcFormPuede(f);
 });
 document.getElementById('sec-pdc').addEventListener('change', function (e) {
+  if (e.target.closest('.pdc-aj-form')) { pdcAjusteInput(e.target); return; }   // v7.0.2
   if (e.target.id === 'pdc-fecha-in' && e.target.value) { pdcElegirDia(e.target.value); return; }
   const fm = e.target.closest('[data-form]');
   if (!fm || !e.target.classList.contains('pdc-dt') || !e.target.value) return;
@@ -5417,6 +5535,7 @@ function pdcFormHtml(t, dia) {
 
 function pdcToggleTipo(tipoId) {
   if (pdc.abiertos[tipoId]) { pdcCerrarTipo(tipoId); return; }
+  pdc.abiertos = {}; pdc.forms = {};   // v7.0.2 — un solo panel abierto (lo marcado sin registrar en el otro se descarta)
   pdc.abiertos[tipoId] = true;
   if (pdc.secuencia && pdc.secuencia !== tipoId) pdc.secuencia = '';   // abrir otro a mano corta la recorrida
   renderPdc();
@@ -5465,7 +5584,7 @@ function pdcFormRegistrar(tipoId) {
   const enSecuencia = pdc.secuencia === tipoId;
   const sig = enSecuencia ? pdcSiguientePendiente(tipoId) : '';   // antes de registrar: el actual todavía cuenta como pendiente
   if (enSecuencia) { pdc.abiertos = {}; if (sig) { pdc.abiertos[sig] = true; pdc.secuencia = sig; } else pdc.secuencia = ''; }
-  else if (!t.multiple) delete pdc.abiertos[tipoId];   // múltiple: queda abierto, listo para otro evento
+  else delete pdc.abiertos[tipoId];   // v7.0.2 — Registrar cierra siempre el panel
   if (navigator.vibrate) navigator.vibrate(40);
   pdcHacerOps(ops, PDC_FLUSH_MS);   // re-renderiza
   pdcToast(txt, ops.map(function (o) { return o.rec.id; }));
@@ -5516,7 +5635,8 @@ function pdcAjustarAlto() {
   if (hdr && hdr.offsetHeight) document.documentElement.style.setProperty('--hdr-alto', hdr.offsetHeight + 'px');
   const escritorio = !estado.modoCel && estado.seccion === 'pdc';
   document.body.classList.toggle('pdc-escritorio', escritorio);
-  const c = document.getElementById('pdc-cuerpo');
+  const c = document.getElementById(pdcEnSemana() ? 'pdc-semana' : 'pdc-cuerpo');   // v7.0.2
+  ['pdc-cuerpo', 'pdc-semana'].forEach(function (id) { if (id !== c.id) document.getElementById(id).style.removeProperty('--pdc-cuerpo-h'); });
   if (!escritorio) c.style.removeProperty('--pdc-cuerpo-h');
   else {
     const top = c.getBoundingClientRect().top + window.scrollY;
@@ -5536,6 +5656,374 @@ function pdcCompactar() {
 }
 window.addEventListener('scroll', pdcCompactar, { passive: true });
 window.addEventListener('resize', function () { if (estado.seccion === 'pdc') pdcAjustarAlto(); });
+
+// ══════════════════════════════════════════════
+// v7.0.2 — VISTA SEMANA (computadora): grilla, ajuste, pie e informe
+// ══════════════════════════════════════════════
+const PDC_RESPS = ['Cliente', 'Neutral', 'Propio'];
+const PDC_RESP_ORDEN = { Cliente: 0, Neutral: 1, Propio: 2 };
+function pdcEnSemana() { return !estado.modoCel && pdc.vista === 'semana' && !!pdc.cat; }
+function pdcLunes(iso) {
+  const d = _parseISO(iso);
+  d.setDate(d.getDate() - (d.getDay() + 6) % 7);
+  return pdcDayKey(d);
+}
+function pdcSemanaSel() { return pdc.semana || pdcLunes(hoyISO()); }
+function pdcDiaCorto(iso) { const d = _parseISO(iso); return DIAS_SEM[d.getDay()] + ' ' + _p2(d.getDate()) + '/' + _p2(d.getMonth() + 1); }
+/** Fecha más vieja que necesita la vista (día elegido o lunes de la semana), si queda fuera de la ventana PDC_DIAS_ATRAS. */
+function pdcDesdeVista() {
+  if (!pdc.cat) return '';
+  const def = pdcSumarDias(hoyISO(), -(pdc.cat.config.PDC_DIAS_ATRAS || 7));
+  let m = '';
+  [pdc.dia, pdc.vista === 'semana' ? pdcSemanaSel() : ''].forEach(function (d) { if (d && d < def && (!m || d < m)) m = d; });
+  return m;
+}
+function pdcImpEf(e) { const n = Number(e.impacto); return e.impacto === '' || isNaN(n) ? 0 : n; }
+function pdcRespEf(e) { return e.responsable || ''; }
+function pdcAjustado(e) { return (e.impactoAjust !== '' && e.impactoAjust !== undefined && e.impactoAjust !== null) || !!e.respAjust; }
+
+/** Todo lo que muestran la grilla, el pie y el informe, de una vez. */
+function pdcDatosSemana(lunes) {
+  const hoy = hoyISO(), ini = pdc.cat.config.PDC_FECHA_INICIO || '';
+  const dias = []; for (let k = 0; k < 7; k++) dias.push(pdcSumarDias(lunes, k));
+  const tipos = pdcTiposActivos();
+  const porCelda = {};
+  Object.keys(pdc.recs).forEach(function (id) {
+    const e = pdc.recs[id];
+    if (e.estado === 'borrado' || e.fecha < dias[0] || e.fecha > dias[6]) return;
+    (porCelda[e.tipoId + '|' + e.fecha] = porCelda[e.tipoId + '|' + e.fecha] || []).push(e);
+  });
+  Object.keys(porCelda).forEach(function (k) { porCelda[k].sort(function (a, b) { return a.fechaHora < b.fechaHora ? -1 : a.fechaHora > b.fechaHora ? 1 : 0; }); });
+  const exigible = function (d) { return d <= hoy && (!ini || d >= ini); };
+  const celdas = {};
+  let exigibles = 0, cargadas = 0;
+  const faltanDia = {};
+  tipos.forEach(function (t) {
+    dias.forEach(function (d) {
+      const evs = porCelda[t.tipoId + '|' + d] || [];
+      let imp = -1, resp = '';
+      evs.forEach(function (e) {
+        const i = pdcImpEf(e), r = pdcRespEf(e);
+        if (i > imp || (i === imp && (PDC_RESP_ORDEN[r] !== undefined ? PDC_RESP_ORDEN[r] : 9) < (PDC_RESP_ORDEN[resp] !== undefined ? PDC_RESP_ORDEN[resp] : 9))) { imp = i; resp = r; }
+      });
+      const c = { tipoId: t.tipoId, dia: d, evs: evs, imp: imp, resp: resp, ajustado: evs.some(pdcAjustado) };
+      c.estado = d > hoy ? 'futuro' : evs.length ? 'ok' : exigible(d) ? 'falta' : 'fuera';
+      if (exigible(d)) { exigibles++; if (evs.length) cargadas++; else faltanDia[d] = (faltanDia[d] || 0) + 1; }
+      celdas[t.tipoId + '|' + d] = c;
+    });
+  });
+  // Pie: un día cuenta para un responsable si tiene al menos un evento suyo con impacto efectivo ≥ 1 (o = 3)
+  const porResp = {};
+  PDC_RESPS.forEach(function (r) { porResp[r] = { afectados: [], imp3: [] }; });
+  const imp3Dias = [];
+  dias.forEach(function (d) {
+    const evs = [];
+    tipos.forEach(function (t) { evs.push.apply(evs, (celdas[t.tipoId + '|' + d] || {}).evs || []); });
+    if (evs.some(function (e) { return pdcImpEf(e) === 3; })) imp3Dias.push(d);
+    PDC_RESPS.forEach(function (r) {
+      if (evs.some(function (e) { return pdcRespEf(e) === r && pdcImpEf(e) >= 1; })) porResp[r].afectados.push(d);
+      if (evs.some(function (e) { return pdcRespEf(e) === r && pdcImpEf(e) === 3; })) porResp[r].imp3.push(d);
+    });
+  });
+  const eventos = [];
+  Object.keys(porCelda).forEach(function (k) { eventos.push.apply(eventos, porCelda[k]); });
+  eventos.sort(function (a, b) { return a.fechaHora < b.fechaHora ? -1 : a.fechaHora > b.fechaHora ? 1 : 0; });
+  return { lunes: lunes, dias: dias, tipos: tipos, celdas: celdas, exigibles: exigibles, cargadas: cargadas, faltanDia: faltanDia,
+    porResp: porResp, imp3Dias: imp3Dias, eventos: eventos, ini: ini, hoy: hoy };
+}
+
+function pdcRespCorto(r) { return r === 'Cliente' ? 'C' : r === 'Neutral' ? 'N' : r === 'Propio' ? 'P' : ''; }
+function pdcDiasTxt(lista) { return lista.length ? lista.map(function (d) { return DIAS_SEM[_parseISO(d).getDay()]; }).join(', ') : '—'; }
+
+function renderSemana() {
+  const lunes = pdcSemanaSel(), S = pdcDatosSemana(lunes), lunesHoy = pdcLunes(hoyISO());
+  // Franja: título, avance de la semana y navegación
+  document.getElementById('pdc-dia-label').textContent = 'Semana ' + pdcDiaCorto(S.dias[0]) + ' – ' + pdcDiaCorto(S.dias[6]) + (lunes === lunesHoy ? ' · actual' : '');
+  const barra = document.getElementById('pdc-barra');
+  barra.classList.remove('hidden');
+  barra.classList.toggle('completo', S.exigibles > 0 && S.cargadas === S.exigibles);
+  barra.querySelector('i').style.width = (S.exigibles ? Math.round(S.cargadas / S.exigibles * 100) : 0) + '%';
+  document.getElementById('pdc-prog-txt').textContent = S.cargadas + ' / ' + S.exigibles + ' celdas';
+  document.getElementById('pdc-dias').innerHTML = '<div class="pdc-sem-nav">' +
+    '<button type="button" data-sem="-1" title="Semana anterior">◀</button>' +
+    '<button type="button" data-sem="0"' + (lunes === lunesHoy ? ' disabled' : '') + '>Semana actual</button>' +
+    '<button type="button" data-sem="1" title="Semana siguiente"' + (lunes >= lunesHoy ? ' disabled' : '') + '>▶</button></div>';
+  document.getElementById('pdc-btn-informe').disabled = !S.eventos.length && !S.exigibles;
+
+  // Grilla
+  const sel = pdc.celda;
+  let h = '<table class="pdc-sem-tabla"><thead><tr><th class="pdc-sem-tipo"></th>' + S.dias.map(function (d) {
+    const f = S.faltanDia[d] || 0;
+    return '<th class="' + (d === S.hoy ? 'hoy' : '') + '">' + escaparHtml(pdcDiaCorto(d)) +
+      (d > S.hoy ? '<small>&nbsp;</small>' : f ? '<small class="falta">faltan ' + f + '</small>' : (S.ini && d < S.ini) ? '<small>—</small>' : '<small>✓</small>') + '</th>';
+  }).join('') + '</tr></thead><tbody>';
+  S.tipos.forEach(function (t) {
+    h += '<tr><th class="pdc-sem-tipo" title="' + escaparHtml(t.tipo) + '">' + escaparHtml(t.tipo) + '</th>';
+    S.dias.forEach(function (d) {
+      const c = S.celdas[t.tipoId + '|' + d];
+      const esSel = sel && sel.tipoId === t.tipoId && sel.dia === d;
+      const cls = 'pdc-celda ' + (c.estado === 'ok' ? 'i' + c.imp : c.estado) + (esSel ? ' sel' : '');
+      const tit = t.tipo + ' · ' + pdcDiaCorto(d) + ' · ' + (c.estado === 'ok' ? c.evs.length + (c.evs.length === 1 ? ' evento' : ' eventos') + ' · impacto ' + c.imp + (c.resp ? ' · ' + c.resp : '') + (c.ajustado ? ' · ajustado' : '')
+        : c.estado === 'falta' ? 'sin cargar' : c.estado === 'futuro' ? 'día futuro' : 'antes del inicio del parte');
+      h += '<td><button type="button" class="' + cls + '" data-celda="' + escaparHtml(t.tipoId + '|' + d) + '" title="' + escaparHtml(tit) + '"' + (c.estado === 'futuro' ? ' disabled' : '') + '>' +
+        (c.estado === 'ok' ? c.imp + (pdcRespCorto(c.resp) ? '<span class="cr r-' + c.resp.toLowerCase() + '">' + pdcRespCorto(c.resp) + '</span>' : '') +
+          (c.ajustado ? '<span class="ca" title="Ajustado">✎</span>' : '') + (c.evs.length > 1 ? '<span class="cn">×' + c.evs.length + '</span>' : '') : '') +
+        '</button></td>';
+    });
+    h += '</tr>';
+  });
+  h += '</tbody></table><div class="pdc-sem-leyenda"><span><i style="background:#f0fdf4"></i>0 sin impacto</span><span><i style="background:#fef9c3"></i>1 leve</span>' +
+    '<span><i style="background:#ffedd5"></i>2 parcial</span><span><i style="background:#fee2e2"></i>3 día caído</span>' +
+    '<span><i style="background:#fff;border:2px solid #f87171"></i>sin cargar</span><span><i style="background:#f1f5f9"></i>antes del inicio / futuro</span>' +
+    '<span>C / N / P = Cliente / Neutral / Propio · ✎ ajustado · ×n eventos</span></div>';
+  document.getElementById('pdc-sem-grilla').innerHTML = h;
+
+  // Pie de la semana
+  const faltan = S.exigibles - S.cargadas;
+  document.getElementById('pdc-sem-pie').innerHTML = '<h4>Resumen de la semana</h4>' +
+    '<table class="pdc-sem-resumen"><thead><tr><th>Responsable</th><th>Días afectados (impacto ≥ 1)</th><th>Días con impacto 3</th></tr></thead><tbody>' +
+    PDC_RESPS.map(function (r) {
+      const x = S.porResp[r];
+      return '<tr><td>' + pdcRespHtml(r) + '</td><td><b>' + x.afectados.length + '</b> <small>' + escaparHtml(pdcDiasTxt(x.afectados)) + '</small></td>' +
+        '<td><b>' + x.imp3.length + '</b> <small>' + escaparHtml(pdcDiasTxt(x.imp3)) + '</small></td></tr>';
+    }).join('') +
+    '<tr><td><b>Total</b></td><td colspan="2"><b>' + S.imp3Dias.length + '</b> <small>' + (S.imp3Dias.length === 1 ? 'día' : 'días') + ' con impacto 3 (' + escaparHtml(pdcDiasTxt(S.imp3Dias)) + ')</small> · ' +
+    (faltan ? '<b style="color:#b91c1c">' + faltan + '</b> <small>celdas sin cargar</small>' : '<small>sin celdas faltantes</small>') + '</td></tr></tbody></table>';
+
+  renderSemanaDetalle(S);
+}
+
+function renderSemanaDetalle(S) {
+  const cont = document.getElementById('pdc-sem-det');
+  const sel = pdc.celda;
+  const c = sel && S.celdas[sel.tipoId + '|' + sel.dia];
+  if (!c) {
+    cont.innerHTML = '<div class="pdc-sem-det-cab"><b>Detalle</b></div><div class="pdc-sem-vacio">Elegí una celda de la grilla para ver sus eventos y ajustar el impacto o el responsable.</div>';
+    return;
+  }
+  const t = pdcTipo(c.tipoId);
+  const pend = {};
+  pdc.queue.forEach(function (o) { pend[o.rec.id] = true; });
+  let h = '<div class="pdc-sem-det-cab"><b>' + escaparHtml(t ? t.tipo : c.tipoId) + '</b> · ' + escaparHtml(pdcDiaLabel(c.dia)) +
+    ' <small style="color:var(--muted)">· ' + c.evs.length + (c.evs.length === 1 ? ' evento' : ' eventos') + '</small></div><div class="pdc-sem-det-cuerpo">';
+  if (!c.evs.length) {
+    h += '<div class="pdc-sem-vacio">' + (c.estado === 'falta' ? 'Sin eventos cargados.<br><br><button type="button" class="btn btn-secondary btn-sm" data-cargar-hoy="1">Cargar en Hoy</button>'
+      : 'Día anterior al inicio del parte (PDC_FECHA_INICIO).') + '</div>';
+  }
+  c.evs.forEach(function (e) {
+    const prop = e.impactoProp !== undefined && e.impactoProp !== '' ? e.impactoProp : e.impacto;
+    const rProp = e.respProp !== undefined && e.respProp !== '' ? e.respProp : e.responsable;
+    h += '<div class="pdc-aj"><div class="pdc-aj-fila"><span class="pdc-ev-hora">' + escaparHtml(pdcHora(e.fechaHora)) + '</span>' +
+      '<div style="flex:1;min-width:0"><div><b>' + escaparHtml(pdcNombreValor(e)) + '</b> ' + pdcImpactoHtml(pdcImpEf(e)) + pdcRespHtml(e.responsable) +
+      (pend[e.id] ? ' <span title="Guardado en el dispositivo, sin enviar">⏳</span>' : '') + '</div>' +
+      (e.observacion ? '<div class="pdc-ev-obs">' + escaparHtml(e.observacion) + '</div>' : '') +
+      '<div class="pdc-aj-prop">Propuesto: impacto ' + escaparHtml(String(prop)) + ' · ' + escaparHtml(rProp || '—') + '</div>' +
+      (pdcAjustado(e) ? '<div class="pdc-aj-ajus">Ajustado: impacto ' + escaparHtml(e.impactoAjust !== '' ? String(e.impactoAjust) : String(prop) + ' (sin cambio)') + ' · ' +
+        escaparHtml(e.respAjust || (rProp || '—') + ' (sin cambio)') + '<br><i>“' + escaparHtml(e.ajusteMotivo || '') + '”</i> — ' +
+        escaparHtml((e.ajusteUsuario || '') + (e.ajusteFechaHora ? ' · ' + pdcDiaCorto(e.ajusteFechaHora.slice(0, 10)) + ' ' + pdcHora(e.ajusteFechaHora) : '')) + '</div>' : '') +
+      '</div>' +
+      (pdc.ajustando === e.id ? '' : '<button type="button" class="btn btn-secondary btn-sm" data-ajustar="' + escaparHtml(e.id) + '"' +
+        (pend[e.id] || estado.offline ? ' disabled title="' + (estado.offline ? 'Sin conexión' : 'Se puede ajustar cuando se envíe') + '"' : '') + '>Ajustar</button>') +
+      '</div>' + (pdc.ajustando === e.id ? pdcAjusteFormHtml(e) : '') + '</div>';
+  });
+  cont.innerHTML = h + '</div>';
+}
+
+function pdcAjusteFormHtml(e) {
+  const a = pdc.ajuste;
+  const opt = function (val, txt, cur) { return '<option value="' + escaparHtml(val) + '"' + (String(cur) === String(val) ? ' selected' : '') + '>' + escaparHtml(txt) + '</option>'; };
+  return '<div class="pdc-aj-form" data-aj="' + escaparHtml(e.id) + '">' +
+    '<div class="fila2"><div><label for="pdc-aj-imp">Impacto ajustado</label><select class="form-control" id="pdc-aj-imp">' +
+    opt('', 'Sin ajuste (usa el propuesto)', a.imp) + [0, 1, 2, 3].map(function (n) { return opt(n, n + ' · ' + PDC_IMPACTO_TXT[n], a.imp); }).join('') + '</select></div>' +
+    '<div><label for="pdc-aj-resp">Responsable ajustado</label><select class="form-control" id="pdc-aj-resp">' +
+    opt('', 'Sin ajuste (usa el propuesto)', a.resp) + PDC_RESPS.concat(['—']).map(function (r) { return opt(r, r, a.resp); }).join('') + '</select></div></div>' +
+    '<div><label for="pdc-aj-motivo">Motivo <span style="color:var(--danger);text-transform:none;letter-spacing:0">* obligatorio</span></label>' +
+    '<textarea class="form-control' + (a.motivo.trim() ? '' : ' req-vacio') + '" id="pdc-aj-motivo" rows="2" maxlength="2000" placeholder="Por qué se ajusta (cláusula, acta, nota…)">' + escaparHtml(a.motivo) + '</textarea></div>' +
+    '<div class="botones"><button type="button" class="btn btn-secondary btn-sm" data-aj-cancelar="1">Cancelar</button>' +
+    '<button type="button" class="btn btn-primary btn-sm" data-aj-guardar="1"' + (pdcAjustePuede(e) ? '' : ' disabled') + '>' + (pdc.guardandoAjuste ? 'Guardando…' : 'Guardar ajuste') + '</button></div></div>';
+}
+function pdcAjustePuede(e) {
+  const a = pdc.ajuste;
+  if (!a || pdc.guardandoAjuste || !a.motivo.trim()) return false;
+  const impAct = e.impactoAjust === '' || e.impactoAjust === undefined || e.impactoAjust === null ? '' : String(e.impactoAjust);
+  return String(a.imp) !== impAct || a.resp !== (e.respAjust || '');
+}
+function pdcAjusteInput(el) {
+  const a = pdc.ajuste, e = pdc.recs[pdc.ajustando];
+  if (!a || !e) return;
+  if (el.id === 'pdc-aj-imp') a.imp = el.value;
+  else if (el.id === 'pdc-aj-resp') a.resp = el.value;
+  else if (el.id === 'pdc-aj-motivo') { a.motivo = el.value; el.classList.toggle('req-vacio', !a.motivo.trim()); }
+  const b = document.querySelector('[data-aj-guardar]');
+  if (b) b.disabled = !pdcAjustePuede(e);
+}
+async function pdcGuardarAjuste() {
+  const e = pdc.recs[pdc.ajustando], a = pdc.ajuste;
+  if (!e || !pdcAjustePuede(e)) return;
+  pdc.guardandoAjuste = true; renderPdc();
+  try {
+    const r = await api('pdcAjustar', { id: e.id, impactoAjust: a.imp, respAjust: a.resp, motivo: a.motivo.trim() });
+    pdc.recs[e.id] = r.evento;
+    pdcGuardar();
+    pdc.ajustando = ''; pdc.ajuste = null;
+    mostrarToast('✓ Ajuste guardado');
+  } catch (err) {
+    mostrarAviso('No se pudo guardar el ajuste: ' + err.message);
+  } finally {
+    pdc.guardandoAjuste = false; renderPdc();
+  }
+}
+
+/** Clicks propios de la vista Semana. Devuelve true si los atendió. */
+function pdcSemanaClick(e) {
+  const v = e.target.closest('[data-vista]');
+  if (v) {
+    if (pdc.vista === v.dataset.vista) return true;
+    pdc.vista = v.dataset.vista;
+    pdc.ajustando = ''; pdc.ajuste = null;
+    renderPdc();
+    if (pdc.vista === 'semana' && pdcDesdeVista() && !estado.offline) pdcTraer();
+    return true;
+  }
+  const sm = e.target.closest('[data-sem]');
+  if (sm) {
+    const n = Number(sm.dataset.sem), lunesHoy = pdcLunes(hoyISO());
+    const nuevo = n === 0 ? '' : pdcSumarDias(pdcSemanaSel(), 7 * n);
+    if (nuevo && nuevo > lunesHoy) return true;
+    pdc.semana = nuevo === lunesHoy ? '' : nuevo;
+    pdc.celda = null; pdc.ajustando = ''; pdc.ajuste = null;
+    renderPdc();
+    if (pdcDesdeVista() && (!pdc.desde || pdcDesdeVista() < pdc.desde) && !estado.offline) pdcTraer();
+    return true;
+  }
+  const c = e.target.closest('[data-celda]');
+  if (c) {
+    const p = c.dataset.celda.split('|');
+    pdc.celda = { tipoId: p[0], dia: p[1] }; pdc.ajustando = ''; pdc.ajuste = null;
+    renderPdc();
+    return true;
+  }
+  const aj = e.target.closest('[data-ajustar]');
+  if (aj) {
+    const ev = pdc.recs[aj.dataset.ajustar];
+    if (!ev) return true;
+    pdc.ajustando = ev.id;
+    pdc.ajuste = { imp: ev.impactoAjust === '' || ev.impactoAjust === undefined || ev.impactoAjust === null ? '' : String(ev.impactoAjust), resp: ev.respAjust || '', motivo: '' };
+    renderPdc();
+    const m = document.getElementById('pdc-aj-motivo'); if (m) m.focus();
+    return true;
+  }
+  if (e.target.closest('[data-aj-cancelar]')) { pdc.ajustando = ''; pdc.ajuste = null; renderPdc(); return true; }
+  if (e.target.closest('[data-aj-guardar]')) { pdcGuardarAjuste(); return true; }
+  if (e.target.closest('[data-cargar-hoy]') && pdc.celda) {
+    const cel = pdc.celda;
+    pdc.vista = 'hoy';
+    pdcElegirDia(cel.dia);
+    pdcToggleTipo(cel.tipoId);
+    pdcScrollATipo(cel.tipoId);
+    return true;
+  }
+  return false;
+}
+
+// ── Informe semanal en PDF: 1) resumen · 2) grilla · 3) anexo (hoja nueva: se imprime aparte) ──
+async function pdcInformeSemanal() {
+  if (!pdc.cat) return;
+  const S = pdcDatosSemana(pdcSemanaSel());
+  const obra = estado.obra, ahora = new Date();
+  const ts = ahora.getFullYear() + _p2(ahora.getMonth() + 1) + _p2(ahora.getDate()) + '_' + _p2(ahora.getHours()) + _p2(ahora.getMinutes());
+  const rango = pdcDiaCorto(S.dias[0]) + ' al ' + pdcDiaCorto(S.dias[6]) + '/' + S.dias[6].slice(0, 4);
+  const colImp = ['#f0fdf4', '#fef9c3', '#ffedd5', '#fee2e2'], txImp = ['#166534', '#854d0e', '#9a3412', '#991b1b'];
+  const cab = function (sub) {
+    return '<div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #d97706;padding-bottom:8px;margin-bottom:16px">' +
+      '<div><div style="font-family:\'Bebas Neue\',sans-serif;font-size:30px;color:#0f172a;letter-spacing:2px;line-height:1">Parte de Contrato · Informe semanal</div>' +
+      '<div style="font-size:13px;color:#475569;margin-top:4px"><b>' + escaparHtml(obra.codigoObra + ' — ' + obra.nombreObra) + '</b> · Semana del ' + escaparHtml(rango) + '</div></div>' +
+      '<div style="text-align:right;font-size:11px;color:#64748b">' + escaparHtml(sub) + '<br>Generado ' + _fmtDDMM(ahora) + ' ' + _p2(ahora.getHours()) + ':' + _p2(ahora.getMinutes()) + ' · ' + escaparHtml(estado.email) + '</div></div>';
+  };
+  const th = 'padding:6px 8px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#64748b;border-bottom:2px solid #e2e8f0';
+  const td = 'padding:6px 8px;border-bottom:1px solid #e2e8f0;color:#1e293b;font-size:12px;vertical-align:top';
+  const faltan = S.exigibles - S.cargadas;
+  const kpi = function (t, v, col) { return '<div style="flex:1;border:1px solid #e2e8f0;border-top:3px solid ' + col + ';border-radius:8px;padding:10px 14px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b">' + t + '</div><div style="font-family:\'Bebas Neue\',sans-serif;font-size:30px;color:' + col + '">' + v + '</div></div>'; };
+  // 1) Resumen
+  const resumen = cab('1 · Resumen') +
+    '<div style="display:flex;gap:12px;margin-bottom:18px">' +
+    kpi('Celdas cargadas', S.cargadas + ' / ' + S.exigibles, faltan ? '#b45309' : '#15803d') +
+    kpi('Días con impacto 3', S.imp3Dias.length, '#991b1b') +
+    kpi('Días afectados · Cliente', S.porResp.Cliente.afectados.length, '#1e40af') +
+    kpi('Eventos en la semana', S.eventos.length, '#0f172a') + '</div>' +
+    '<table style="width:100%;border-collapse:collapse;margin-bottom:16px"><thead><tr style="background:#f1f5f9"><th style="' + th + '">Responsable</th><th style="' + th + '">Días afectados (impacto ≥ 1)</th><th style="' + th + '">Días con impacto 3</th></tr></thead><tbody>' +
+    PDC_RESPS.map(function (r) {
+      const x = S.porResp[r];
+      return '<tr><td style="' + td + ';font-weight:700">' + r + '</td><td style="' + td + '"><b>' + x.afectados.length + '</b> · ' + escaparHtml(pdcDiasTxt(x.afectados)) + '</td><td style="' + td + '"><b>' + x.imp3.length + '</b> · ' + escaparHtml(pdcDiasTxt(x.imp3)) + '</td></tr>';
+    }).join('') + '</tbody></table>' +
+    '<div style="font-size:12px;color:#334155;line-height:1.6">' +
+    (faltan ? '<b style="color:#b91c1c">Celdas sin cargar: ' + faltan + '</b> — ' + escaparHtml(Object.keys(S.faltanDia).sort().map(function (d) { return pdcDiaCorto(d) + ' (' + S.faltanDia[d] + ')'; }).join(', ')) + '<br>' : 'Parte completo: todas las celdas exigibles tienen al menos un evento.<br>') +
+    'Eventos con ajuste: <b>' + S.eventos.filter(pdcAjustado).length + '</b>' +
+    (S.ini ? ' · Parte exigible desde ' + escaparHtml(pdcDiaCorto(S.ini)) + '/' + S.ini.slice(0, 4) : ' · La obra no tiene PDC_FECHA_INICIO') +
+    (pdc.queue.length ? '<br><b style="color:#b45309">Atención:</b> hay ' + pdc.queue.length + ' eventos en este dispositivo todavía sin enviar al Sheet (incluidos en el informe).' : '') +
+    '</div><div style="margin-top:14px;font-size:11px;color:#64748b">Impacto: 0 sin impacto · 1 leve · 2 parcial (≈ media jornada o un frente) · 3 día caído. Se usa el impacto y el responsable <b>efectivos</b> (el ajustado si existe; si no, el propuesto). Un día cuenta para un responsable si tiene al menos un evento suyo con ese impacto.</div>';
+  // 2) Grilla
+  let grilla = cab('2 · Grilla de la semana') + '<table style="width:100%;border-collapse:separate;border-spacing:3px;table-layout:fixed"><thead><tr><th style="' + th + ';width:210px;border:none"></th>' +
+    S.dias.map(function (d) { return '<th style="' + th + ';text-align:center;border:none">' + escaparHtml(pdcDiaCorto(d)) + '</th>'; }).join('') + '</tr></thead><tbody>';
+  S.tipos.forEach(function (t) {
+    grilla += '<tr><td style="font-size:12px;font-weight:600;color:#1e293b;padding:4px 6px">' + escaparHtml(t.tipo) + '</td>';
+    S.dias.forEach(function (d) {
+      const c = S.celdas[t.tipoId + '|' + d];
+      const st = c.estado === 'ok' ? 'background:' + colImp[c.imp] + ';color:' + txImp[c.imp] + ';border:1px solid #e2e8f0'
+        : c.estado === 'falta' ? 'background:#fff;border:2px solid #f87171;color:#b91c1c' : 'background:#f1f5f9;border:1px solid #e2e8f0;color:#cbd5e1';
+      grilla += '<td style="' + st + ';border-radius:6px;height:30px;text-align:center;font-size:13px;font-weight:700">' +
+        (c.estado === 'ok' ? c.imp + ' <span style="font-size:10px">' + pdcRespCorto(c.resp) + (c.ajustado ? ' ✎' : '') + (c.evs.length > 1 ? ' ×' + c.evs.length : '') + '</span>' : c.estado === 'falta' ? '<span style="font-size:10px">falta</span>' : '') + '</td>';
+    });
+    grilla += '</tr>';
+  });
+  grilla += '</tbody></table><div style="margin-top:10px;font-size:11px;color:#64748b">Celda: impacto efectivo más alto del día · C/N/P = responsable (Cliente / Neutral / Propio) · ✎ = ajustado · ×n = cantidad de eventos · borde rojo = sin cargar · gris = antes del inicio o futuro.</div>';
+  // 3) Anexo
+  let anexo = cab('3 · Anexo — detalle de eventos') + '<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f1f5f9">' +
+    ['Día', 'Hora', 'Tipo', 'Valor', 'Imp.', 'Resp.', 'Observación', 'Ajuste'].map(function (x) { return '<th style="' + th + '">' + x + '</th>'; }).join('') + '</tr></thead><tbody>';
+  S.eventos.forEach(function (e, i) {
+    const t = pdcTipo(e.tipoId);
+    anexo += '<tr style="background:' + (i % 2 ? '#f8fafc' : '#fff') + '"><td style="' + td + ';white-space:nowrap">' + escaparHtml(pdcDiaCorto(e.fecha)) + '</td><td style="' + td + '">' + escaparHtml(pdcHora(e.fechaHora)) + '</td>' +
+      '<td style="' + td + '">' + escaparHtml(t ? t.tipo : e.tipoId) + '</td><td style="' + td + ';font-weight:600">' + escaparHtml(pdcNombreValor(e)) + '</td>' +
+      '<td style="' + td + ';text-align:center;font-weight:700;color:' + txImp[pdcImpEf(e)] + '">' + pdcImpEf(e) + '</td><td style="' + td + '">' + escaparHtml(e.responsable || '') + '</td>' +
+      '<td style="' + td + '">' + escaparHtml(e.observacion || '') + '</td>' +
+      '<td style="' + td + ';font-size:11px;color:#1e3a8a">' + (pdcAjustado(e) ? 'Propuesto ' + escaparHtml(String(e.impactoProp)) + ' · ' + escaparHtml(e.respProp || '—') + '<br>“' + escaparHtml(e.ajusteMotivo || '') + '”' : '') + '</td></tr>';
+  });
+  if (!S.eventos.length) anexo += '<tr><td colspan="8" style="' + td + ';text-align:center;color:#64748b">Sin eventos en la semana.</td></tr>';
+  anexo += '</tbody></table>';
+
+  const cont = document.getElementById('pdf-render-pdc');
+  spinner(true, 'Generando el informe semanal…');
+  try {
+    if (typeof html2canvas === 'undefined') await cargarScript(CDN.html2canvas);
+    if (!window.jspdf) await cargarScript(CDN.jspdf);
+    const pdf = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const secciones = [resumen, grilla, anexo];
+    for (let k = 0; k < secciones.length; k++) {
+      cont.innerHTML = '<div style="padding:28px">' + secciones[k] + '</div>';
+      if (k > 0) pdf.addPage();
+      await pdcPdfSeccion(pdf, cont);
+    }
+    pdf.save(obra.codigoObra + '_PdC_Semana_' + S.dias[0] + '_' + ts + '.pdf');
+    mostrarToast('✓ Informe semanal generado');
+  } catch (err) {
+    mostrarAviso('No se pudo generar el informe: ' + err.message);
+  } finally { spinner(false); cont.innerHTML = ''; }
+}
+/** Una sección a una o más hojas (A4 apaisada), arrancando en la hoja actual. */
+async function pdcPdfSeccion(pdf, el) {
+  const canvas = await html2canvas(el, { scale: 2, useCORS: true, logging: false });
+  const img = canvas.toDataURL('image/png');
+  const pageW = pdf.internal.pageSize.getWidth(), pageH = pdf.internal.pageSize.getHeight(), m = 8;
+  const imgW = pageW - m * 2, imgH = canvas.height * imgW / canvas.width;
+  let resta = imgH;
+  pdf.addImage(img, 'PNG', m, m, imgW, imgH);
+  resta -= pageH - m * 2;
+  while (resta > 0) {
+    pdf.addPage();
+    pdf.addImage(img, 'PNG', m, resta - imgH + m, imgW, imgH);
+    resta -= pageH - m * 2;
+  }
+}
 
 // ── Toast con Deshacer (RegMed) ──
 let pdcToastIds = null, pdcToastTimer = null;
