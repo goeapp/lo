@@ -1,5 +1,5 @@
-// sw.js — LibroObra PWA · v7.0.2 (07-oct-2026) — solo cambia CACHE_NAME (index v7.0.2)
-// Se entrega como sw_libroobra_v7_0_2.js y se sube al repo "lo" RENOMBRADO
+// sw.js — LibroObra PWA · v7.0.2 r1 (07-oct-2026) — solo cambia CACHE_NAME (index v7.0.2 r1)
+// Se entrega como sw_libroobra_v7_0_2_r1.js y se sube al repo "lo" RENOMBRADO
 // a sw.js (al lado de index.html). Base: sw de BUP v1.1.0 (patrón MdT).
 //
 // Para qué: que la app ABRA SIN SEÑAL (Parte de Contrato, D20).
@@ -14,7 +14,7 @@
 //    sin señal se ve con la letra del sistema.
 // Cambiar CACHE_NAME en cada versión nueva del index.
 
-const CACHE_NAME = 'lo-v7.0.2';
+const CACHE_NAME = 'lo-v7.0.2-r1';
 
 const PROPIOS = [
   './',

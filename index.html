@@ -3,8 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra v7.0.2</title>
+<title>LibroObra v7.0.2 r1</title>
 <!--
+  index_libroobra_v7_0_2_r1.html — LibroObra v7.0.2 r1 (07-oct-2026)
+  Backend: gas_libroobra_v7_0_2.gs (SIN CAMBIOS). sw.js: sw_libroobra_v7_0_2_r1.js.
+
+  QUÉ CAMBIÓ EN v7.0.2 r1 (retoques de la prueba del 07-oct):
+   - Hoy (computadora): filtro rápido de la línea de tiempo por tipo, uno
+     a la vez (chips "Todos" + tipos con su cantidad; otro clic quita).
+   - Semana: el encabezado de la grilla (días, fechas, "faltan n" / ✓)
+     queda fijo al bajar por los tipos.
+   - Informe semanal: el anexo se arma hoja por hoja (sin renglones
+     cortados, con el encabezado de la tabla repetido en cada hoja).
+     Hojas en JPEG: el informe pasa de ~10 MB a unos cientos de KB por hoja.
+   - Botón "↓ XLSX" junto al informe: listado de eventos de la semana a
+     la vista (fechas como texto, filtro automático).
+   - llamarBackend con timeout (AbortController): 25 s login/permisos,
+     30 s PdC, 60 s carga pesada, 5,5 min lo que puede tardar (subida,
+     lectura de PDF, dashboard), 2 min el resto. Un timeout cuenta como
+     falla de red: 1 reintento en las acciones seguras y después el panel
+     con Reintentar. Ya no queda trabado en "Verificando permisos…".
+
+  (historia anterior)
   index_libroobra_v7_0_2.html — LibroObra v7.0.2 (07-oct-2026)
   Backend: gas_libroobra_v7_0_2.gs (nuevo: pdcAjustar). sw.js: sw_libroobra_v7_0_2.js.
   Diseño: Diseno_LibroObra_PdC_v1.1.0.md §6 (vista Semana).
@@ -1075,7 +1095,16 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 .pdc-fija { display: flex; flex-direction: column; gap: 12px; }
 .pdc-cuerpo { display: flex; flex-direction: column; gap: 12px; }
 .pdc-col-linea { display: none; }
-.pdc-linea-cab { position: sticky; top: 0; z-index: 2; background: var(--surface); padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: .9rem; color: var(--accent2); display: flex; align-items: baseline; gap: 8px; }
+.pdc-linea-cab { position: sticky; top: 0; z-index: 2; background: var(--surface); padding: 12px 16px 10px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: .9rem; color: var(--accent2); }
+.pdc-linea-tit { display: flex; align-items: baseline; gap: 8px; }
+/* v7.0.2 r1 — filtro rápido por tipo */
+.pdc-filtro { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.pdc-fchip { border: 1px solid var(--border); background: var(--surface); border-radius: 99px; padding: 3px 10px; font-size: .72rem; font-weight: 600; color: var(--accent2); white-space: nowrap; }
+.pdc-fchip b { font-weight: 700; color: var(--muted); margin-left: 2px; }
+.pdc-fchip:hover { border-color: var(--accent2); }
+.pdc-fchip.vacio { opacity: .5; }
+.pdc-fchip.on { background: var(--accent2); border-color: var(--accent2); color: #fff; opacity: 1; }
+.pdc-fchip.on b { color: #fbbf24; }
 .pdc-linea-cab small { font-weight: 500; color: var(--muted); font-size: .76rem; }
 .pdc-linea { padding: 2px 16px 12px; }
 .pdc-linea-vacia { color: var(--muted); font-size: .84rem; padding: 24px 0; text-align: center; }
@@ -1109,13 +1138,15 @@ body:not(.modo-cel) .wiz-valor .pdc-imp { min-width: 17px; height: 17px; font-si
 .pdc-vistas button.on { background: var(--accent2); color: #fff; }
 body.modo-cel .pdc-vistas { display: none !important; }
 .pdc-sem-acc, .pdc-semana { display: none; }
-#sec-pdc.vista-semana .pdc-sem-acc { display: grid; grid-template-columns: 1fr; }
+#sec-pdc.vista-semana .pdc-sem-acc { display: grid; grid-template-columns: 2fr 1fr; }
 #sec-pdc.vista-semana #pdc-acciones, #sec-pdc.vista-semana #pdc-cuerpo { display: none !important; }
 body:not(.modo-cel) #sec-pdc.vista-semana .pdc-semana { display: grid; grid-template-columns: 1fr minmax(340px, 400px); gap: 16px; height: var(--pdc-cuerpo-h, auto); min-height: 280px; }
 .pdc-sem-nav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .pdc-sem-nav button { border: 1px solid var(--border); background: var(--surface); border-radius: 99px; padding: 5px 12px; font-size: .78rem; font-weight: 600; color: var(--accent2); }
 .pdc-sem-nav button:disabled { opacity: .4; cursor: default; }
-.pdc-sem-izq { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 14px; }
+.pdc-sem-izq { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 0 14px 12px; }
+/* v7.0.2 r1 — encabezado de la grilla fijo al bajar por los tipos */
+.pdc-sem-tabla thead th { position: sticky; top: 0; z-index: 3; background: var(--surface); padding-top: 12px; box-shadow: 0 -4px 0 var(--surface); }
 .pdc-sem-det { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
 .pdc-sem-tabla { width: 100%; border-collapse: separate; border-spacing: 4px; table-layout: fixed; }
 .pdc-sem-tabla th { font-size: .7rem; font-weight: 700; color: var(--muted); text-align: center; padding: 2px 0 4px; }
@@ -1205,7 +1236,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
   <div class="caja">
     <span class="caja-emoji">📋</span>
     <div class="caja-logo">LibroObra</div>
-    <div class="caja-version" id="version-login">v7.0.2</div>
+    <div class="caja-version" id="version-login">v7.0.2 r1</div>
     <div class="caja-sub">Registro de comunicaciones de obra</div>
 
     <div id="paso-email" class="login-paso activo">
@@ -1273,7 +1304,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
     <button class="hdr-btn" id="btn-cambiar-obra" onclick="cambiarObra()">Cambiar obra</button>
     <button class="hdr-btn hdr-btn-instalar hidden" id="btn-instalar">Instalar</button>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version" id="version-app">v7.0.2</span>
+    <span class="hdr-version" id="version-app">v7.0.2 r1</span>
     <button class="hdr-btn" onclick="confirmarCerrarSesion()">Salir</button>
   </header>
 
@@ -1490,6 +1521,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
         </div>
         <div class="pdc-acciones pdc-sem-acc" id="pdc-sem-acc">
           <button type="button" class="pdc-btn-grande pri" id="pdc-btn-informe" onclick="pdcInformeSemanal()">↓ Informe semanal</button>
+          <button type="button" class="pdc-btn-grande sec" id="pdc-btn-xlsx" onclick="pdcEventosXlsx()" title="Listado de eventos de la semana a la vista">↓ XLSX</button>
         </div>
         </div>
         <div class="pdc-cuerpo" id="pdc-cuerpo">
@@ -1851,7 +1883,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
 // ══════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════
-const APP_VERSION = 'v7.0.2';
+const APP_VERSION = 'v7.0.2 r1';
 const API_URL = 'https://script.google.com/macros/s/AKfycbxDN2F_K6z4wQXDJAyyZ6EdoSqoQgHv8d8f7gXGo-QYdke3DXW6hvZtEnmEy9xFpjTO/exec';
 const SESION_KEY = 'lo_sesion';
 const OBRA_KEY = 'lo_obra_actual';
@@ -2246,6 +2278,14 @@ function armarQueryString_(action, params) {
   return qs.toString();
 }
 
+// v7.0.2 r1 — tiempo máximo por acción (ms). Un fetch colgado ya no deja la pantalla trabada.
+const TIMEOUT_BACKEND = {
+  inicializarSesion: 25000, validarSesion: 25000, solicitarPIN: 25000, validarPIN: 25000, inicializarObraLiviana: 25000,
+  pdcInicializar: 30000, pdcBatch: 30000, pdcAjustar: 30000,
+  inicializarObraPesada: 60000,
+  registrarComunicacion: 330000, indexarTexto: 330000, recalcularDashboard: 330000   // subida / lectura de PDF / cálculo
+};
+const TIMEOUT_BACKEND_DEF = 120000;
 async function llamarBackend(action, params, reintentando) {
   const esGet = ACCIONES_GET.has(action);
   if (!navigator.onLine) {
@@ -2253,21 +2293,33 @@ async function llamarBackend(action, params, reintentando) {
     throw new Error('Estás sin conexión a internet. Revisá tu conexión y volvé a intentar.');
   }
   let resp;
+  const ms = TIMEOUT_BACKEND[action] || TIMEOUT_BACKEND_DEF;
+  const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(function () { ctrl.abort(); }, ms) : null;
+  const errTimeout = function () { return new Error('El servidor no respondió en ' + Math.round(ms / 1000) + ' s. Revisá la conexión y volvé a intentar.'); };
   try {
     if (esGet) {
-      resp = await fetch(API_URL + '?' + armarQueryString_(action, params));
+      resp = await fetch(API_URL + '?' + armarQueryString_(action, params), ctrl ? { signal: ctrl.signal } : undefined);
     } else {
       resp = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight CORS
-        body: JSON.stringify(Object.assign({ action: action }, params || {}))
+        body: JSON.stringify(Object.assign({ action: action }, params || {})),
+        signal: ctrl ? ctrl.signal : undefined
       });
     }
   } catch (fetchErr) {
-    return llamarBackendManejarFallo_(action, params, reintentando, new Error('No se pudo conectar con el backend. Revisá tu conexión y volvé a intentar.'));
+    clearTimeout(timer);
+    return llamarBackendManejarFallo_(action, params, reintentando, ctrl && ctrl.signal.aborted ? errTimeout()
+      : new Error('No se pudo conectar con el backend. Revisá tu conexión y volvé a intentar.'));
   }
   let texto = '';
-  try { texto = await resp.text(); } catch (e) { texto = ''; }
+  try { texto = await resp.text(); } catch (e) {
+    clearTimeout(timer);
+    if (ctrl && ctrl.signal.aborted) return llamarBackendManejarFallo_(action, params, reintentando, errTimeout());
+    texto = '';
+  }
+  clearTimeout(timer);
   if (!resp.ok) {
     console.error('[llamarBackend]', action, 'HTTP ' + resp.status + ' — ' + (resp.url || '') + ' — respuesta (300 car.):', texto.slice(0, 300));
     return llamarBackendManejarFallo_(action, params, reintentando, new Error('El backend respondió con un error (HTTP ' + resp.status + ').'));
@@ -5034,7 +5086,8 @@ const pdc = {
   vista: 'hoy',            // v7.0.2 — computadora: 'hoy' | 'semana'
   semana: '',              // v7.0.2 — lunes de la semana a la vista ('' = la actual)
   celda: null,             // v7.0.2 — {tipoId, dia} elegida en la grilla
-  ajustando: '', ajuste: null, guardandoAjuste: false   // v7.0.2 — formulario de ajuste abierto (id del evento)
+  ajustando: '', ajuste: null, guardandoAjuste: false,  // v7.0.2 — formulario de ajuste abierto (id del evento)
+  filtroLinea: ''          // v7.0.2 r1 — línea de tiempo: '' = todos, o un tipoId
 };
 
 // ── Dispositivo (localStorage, por obra) ──
@@ -5362,12 +5415,24 @@ function renderPdc() {
   pdcRestaurarFoco(foco);
 
   // v7.0.1 — línea de tiempo del día (computadora)
-  const evDia = pdcEventosDia(dia);
-  document.getElementById('pdc-linea-cab').innerHTML = 'Línea de tiempo <small>' + escaparHtml(pdcDiaLabel(dia)) + ' · ' +
-    evDia.length + (evDia.length === 1 ? ' evento' : ' eventos') + '</small>';
+  const evTodos = pdcEventosDia(dia);
+  // v7.0.2 r1 — filtro rápido por tipo (uno a la vez)
+  const fT = pdc.filtroLinea && pdcTipo(pdc.filtroLinea) ? pdc.filtroLinea : '';
+  const evDia = fT ? evTodos.filter(function (e) { return e.tipoId === fT; }) : evTodos;
+  const cuenta = {};
+  evTodos.forEach(function (e) { cuenta[e.tipoId] = (cuenta[e.tipoId] || 0) + 1; });
+  document.getElementById('pdc-linea-cab').innerHTML = '<div class="pdc-linea-tit">Línea de tiempo <small>' + escaparHtml(pdcDiaLabel(dia)) + ' · ' +
+    (fT ? escaparHtml(pdcTipo(fT).tipo) + ' · ' : '') + evDia.length + (evDia.length === 1 ? ' evento' : ' eventos') + '</small></div>' +
+    '<div class="pdc-filtro">' +
+    '<button type="button" class="pdc-fchip' + (fT ? '' : ' on') + '" data-filtro="">Todos <b>' + evTodos.length + '</b></button>' +
+    st.tipos.map(function (t) {
+      const n = cuenta[t.tipoId] || 0;
+      return '<button type="button" class="pdc-fchip' + (fT === t.tipoId ? ' on' : '') + (n ? '' : ' vacio') + '" data-filtro="' + escaparHtml(t.tipoId) + '" title="' + escaparHtml(t.tipo) + '">' +
+        escaparHtml(t.tipo) + ' <b>' + n + '</b></button>';
+    }).join('') + '</div>';
   document.getElementById('pdc-linea').innerHTML = evDia.length
     ? evDia.map(function (e) { return pdcEvHtml(e, pend, true); }).join('')
-    : '<div class="pdc-linea-vacia">Sin eventos registrados en el día.</div>';
+    : '<div class="pdc-linea-vacia">' + (fT ? 'Sin eventos de ' + escaparHtml(pdcTipo(fT).tipo) + ' en el día.' : 'Sin eventos registrados en el día.') + '</div>';
 
   const n = pdc.queue.length;
   document.getElementById('pdc-pie').innerHTML =
@@ -5416,6 +5481,8 @@ function pdcElegirDia(d) {
 
 document.getElementById('sec-pdc').addEventListener('click', function (e) {
   if (pdcSemanaClick(e)) return;   // v7.0.2 — selector, grilla y ajuste
+  const fl = e.target.closest('[data-filtro]');   // v7.0.2 r1 — filtro de la línea de tiempo (otro clic en el mismo = todos)
+  if (fl) { const id = fl.dataset.filtro; pdc.filtroLinea = id && pdc.filtroLinea !== id ? id : ''; renderPdc(); document.getElementById('pdc-col-linea').scrollTop = 0; return; }
   const dia = e.target.closest('[data-dia]');
   if (dia) { pdcElegirDia(dia.dataset.dia); return; }
   const tg = e.target.closest('[data-toggle]');
@@ -5749,6 +5816,7 @@ function renderSemana() {
     '<button type="button" data-sem="0"' + (lunes === lunesHoy ? ' disabled' : '') + '>Semana actual</button>' +
     '<button type="button" data-sem="1" title="Semana siguiente"' + (lunes >= lunesHoy ? ' disabled' : '') + '>▶</button></div>';
   document.getElementById('pdc-btn-informe').disabled = !S.eventos.length && !S.exigibles;
+  document.getElementById('pdc-btn-xlsx').disabled = !S.eventos.length;
 
   // Grilla
   const sel = pdc.celda;
@@ -5977,19 +6045,25 @@ async function pdcInformeSemanal() {
     grilla += '</tr>';
   });
   grilla += '</tbody></table><div style="margin-top:10px;font-size:11px;color:#64748b">Celda: impacto efectivo más alto del día · C/N/P = responsable (Cliente / Neutral / Propio) · ✎ = ajustado · ×n = cantidad de eventos · borde rojo = sin cargar · gris = antes del inicio o futuro.</div>';
-  // 3) Anexo
-  let anexo = cab('3 · Anexo — detalle de eventos') + '<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f1f5f9">' +
-    ['Día', 'Hora', 'Tipo', 'Valor', 'Imp.', 'Resp.', 'Observación', 'Ajuste'].map(function (x) { return '<th style="' + th + '">' + x + '</th>'; }).join('') + '</tr></thead><tbody>';
+  // 3) Anexo — v7.0.2 r1: se pagina por renglones (ninguno queda cortado y cada hoja repite el encabezado)
+  const anexoThead = '<thead><tr style="background:#f1f5f9">' +
+    ['Día', 'Hora', 'Tipo', 'Valor', 'Imp.', 'Resp.', 'Observación', 'Ajuste'].map(function (x) { return '<th style="' + th + '">' + x + '</th>'; }).join('') + '</tr></thead>';
+  // anchos fijos: todas las hojas iguales y la altura medida de cada renglón vale para cualquier hoja
+  const anexoCols = '<colgroup>' + [70, 48, 150, 150, 40, 62, 0, 170].map(function (w) { return '<col' + (w ? ' style="width:' + w + 'px"' : '') + '>'; }).join('') + '</colgroup>';
+  const anexoFilas = [];
   S.eventos.forEach(function (e, i) {
     const t = pdcTipo(e.tipoId);
-    anexo += '<tr style="background:' + (i % 2 ? '#f8fafc' : '#fff') + '"><td style="' + td + ';white-space:nowrap">' + escaparHtml(pdcDiaCorto(e.fecha)) + '</td><td style="' + td + '">' + escaparHtml(pdcHora(e.fechaHora)) + '</td>' +
+    anexoFilas.push('<tr style="background:' + (i % 2 ? '#f8fafc' : '#fff') + '"><td style="' + td + ';white-space:nowrap">' + escaparHtml(pdcDiaCorto(e.fecha)) + '</td><td style="' + td + '">' + escaparHtml(pdcHora(e.fechaHora)) + '</td>' +
       '<td style="' + td + '">' + escaparHtml(t ? t.tipo : e.tipoId) + '</td><td style="' + td + ';font-weight:600">' + escaparHtml(pdcNombreValor(e)) + '</td>' +
       '<td style="' + td + ';text-align:center;font-weight:700;color:' + txImp[pdcImpEf(e)] + '">' + pdcImpEf(e) + '</td><td style="' + td + '">' + escaparHtml(e.responsable || '') + '</td>' +
       '<td style="' + td + '">' + escaparHtml(e.observacion || '') + '</td>' +
-      '<td style="' + td + ';font-size:11px;color:#1e3a8a">' + (pdcAjustado(e) ? 'Propuesto ' + escaparHtml(String(e.impactoProp)) + ' · ' + escaparHtml(e.respProp || '—') + '<br>“' + escaparHtml(e.ajusteMotivo || '') + '”' : '') + '</td></tr>';
+      '<td style="' + td + ';font-size:11px;color:#1e3a8a">' + (pdcAjustado(e) ? 'Propuesto ' + escaparHtml(String(e.impactoProp)) + ' · ' + escaparHtml(e.respProp || '—') + '<br>“' + escaparHtml(e.ajusteMotivo || '') + '”' : '') + '</td></tr>');
   });
-  if (!S.eventos.length) anexo += '<tr><td colspan="8" style="' + td + ';text-align:center;color:#64748b">Sin eventos en la semana.</td></tr>';
-  anexo += '</tbody></table>';
+  if (!S.eventos.length) anexoFilas.push('<tr><td colspan="8" style="' + td + ';text-align:center;color:#64748b">Sin eventos en la semana.</td></tr>');
+  const anexoHoja = function (filas, k, n) {
+    return '<div style="padding:28px">' + cab('3 · Anexo — detalle de eventos' + (n > 1 ? ' · hoja ' + k + ' de ' + n : '')) +
+      '<table style="width:100%;border-collapse:collapse;table-layout:fixed">' + anexoCols + anexoThead + '<tbody>' + filas.join('') + '</tbody></table></div>';
+  };
 
   const cont = document.getElementById('pdf-render-pdc');
   spinner(true, 'Generando el informe semanal…');
@@ -5997,10 +6071,29 @@ async function pdcInformeSemanal() {
     if (typeof html2canvas === 'undefined') await cargarScript(CDN.html2canvas);
     if (!window.jspdf) await cargarScript(CDN.jspdf);
     const pdf = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    const secciones = [resumen, grilla, anexo];
+    const secciones = [resumen, grilla];
     for (let k = 0; k < secciones.length; k++) {
       cont.innerHTML = '<div style="padding:28px">' + secciones[k] + '</div>';
       if (k > 0) pdf.addPage();
+      await pdcPdfSeccion(pdf, cont);
+    }
+    // Anexo: se mide una vez y se reparte en hojas que entran enteras
+    const pageW = pdf.internal.pageSize.getWidth(), pageH = pdf.internal.pageSize.getHeight();
+    const altoHojaPx = Math.floor((pageH - 16) * cont.offsetWidth / (pageW - 16)) - 12;   // mismo margen que pdcPdfSeccion
+    cont.innerHTML = anexoHoja(anexoFilas, 1, 1);
+    const trs = cont.querySelectorAll('tbody > tr');
+    const fijo = cont.firstChild.offsetHeight - Array.prototype.reduce.call(trs, function (a, tr) { return a + tr.offsetHeight; }, 0);
+    const grupos = [[]];
+    let usado = fijo;
+    anexoFilas.forEach(function (f, i) {
+      const h = trs[i].offsetHeight;
+      if (usado + h > altoHojaPx && grupos[grupos.length - 1].length) { grupos.push([]); usado = fijo; }
+      grupos[grupos.length - 1].push(f);
+      usado += h;
+    });
+    for (let k = 0; k < grupos.length; k++) {
+      cont.innerHTML = anexoHoja(grupos[k], k + 1, grupos.length);
+      pdf.addPage();
       await pdcPdfSeccion(pdf, cont);
     }
     pdf.save(obra.codigoObra + '_PdC_Semana_' + S.dias[0] + '_' + ts + '.pdf');
@@ -6009,18 +6102,52 @@ async function pdcInformeSemanal() {
     mostrarAviso('No se pudo generar el informe: ' + err.message);
   } finally { spinner(false); cont.innerHTML = ''; }
 }
+/** v7.0.2 r1 — "↓ XLSX": listado de eventos de la semana a la vista (fechas como texto). */
+async function pdcEventosXlsx() {
+  if (!pdc.cat) return;
+  const S = pdcDatosSemana(pdcSemanaSel());
+  if (!S.eventos.length) { mostrarToast('⚠ No hay eventos en la semana'); return; }
+  const pend = {};
+  pdc.queue.forEach(function (o) { pend[o.rec.id] = true; });
+  spinner(true, 'Preparando Excel…');
+  try {
+    if (typeof XLSX === 'undefined') await cargarScript(CDN.xlsx);
+    const headers = ['Fecha', 'Día', 'Hora', 'Tipo', 'Valor', 'Impacto', 'Responsable', 'Observación',
+      'Impacto propuesto', 'Resp. propuesto', 'Impacto ajustado', 'Resp. ajustado', 'Motivo del ajuste', 'Ajustó', 'Fecha del ajuste',
+      'Origen', 'Cargado por', 'Envío', 'ID'];
+    const data = S.eventos.map(function (e) {
+      const t = pdcTipo(e.tipoId), d = _parseISO(e.fecha);
+      const prop = e.impactoProp !== undefined && e.impactoProp !== '' ? Number(e.impactoProp) : pdcImpEf(e);
+      return [fmtFecha(e.fecha), DIAS_SEM[d.getDay()], pdcHora(e.fechaHora), t ? t.tipo : e.tipoId, pdcNombreValor(e), pdcImpEf(e), e.responsable || '',
+        e.observacion || '', prop, e.respProp || e.responsable || '',
+        e.impactoAjust === '' || e.impactoAjust === undefined || e.impactoAjust === null ? '' : Number(e.impactoAjust), e.respAjust || '',
+        e.ajusteMotivo || '', e.ajusteUsuario || '', e.ajusteFechaHora ? fmtFecha(e.ajusteFechaHora.slice(0, 10)) + ' ' + pdcHora(e.ajusteFechaHora) : '',
+        e.origen || '', e.usuario || '', pend[e.id] ? 'Sin enviar' : 'Enviado', e.id];
+    });
+    const ws = XLSX.utils.aoa_to_sheet([headers].concat(data));
+    ws['!cols'] = [11, 5, 6, 26, 30, 8, 11, 40, 10, 11, 10, 11, 36, 24, 16, 16, 24, 10, 38].map(function (w) { return { wch: w }; });
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: data.length, c: headers.length - 1 } }) };
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Eventos');
+    XLSX.writeFile(wb, estado.obra.codigoObra + '_PdC_Eventos_' + S.dias[0] + '.xlsx');
+    mostrarToast('✓ Excel generado · ' + data.length + ' eventos');
+  } catch (err) {
+    mostrarAviso('No se pudo generar el Excel: ' + err.message);
+  } finally { spinner(false); }
+}
+
 /** Una sección a una o más hojas (A4 apaisada), arrancando en la hoja actual. */
 async function pdcPdfSeccion(pdf, el) {
-  const canvas = await html2canvas(el, { scale: 2, useCORS: true, logging: false });
-  const img = canvas.toDataURL('image/png');
+  const canvas = await html2canvas(el, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' });
+  const img = canvas.toDataURL('image/jpeg', 0.88);   // v7.0.2 r1 — JPEG: el PNG sin comprimir pesaba ~10 MB por hoja
   const pageW = pdf.internal.pageSize.getWidth(), pageH = pdf.internal.pageSize.getHeight(), m = 8;
   const imgW = pageW - m * 2, imgH = canvas.height * imgW / canvas.width;
   let resta = imgH;
-  pdf.addImage(img, 'PNG', m, m, imgW, imgH);
+  pdf.addImage(img, 'JPEG', m, m, imgW, imgH, undefined, 'FAST');
   resta -= pageH - m * 2;
   while (resta > 0) {
     pdf.addPage();
-    pdf.addImage(img, 'PNG', m, resta - imgH + m, imgW, imgH);
+    pdf.addImage(img, 'JPEG', m, resta - imgH + m, imgW, imgH, undefined, 'FAST');
     resta -= pageH - m * 2;
   }
 }
