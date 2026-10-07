@@ -3,8 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra v7.0.0</title>
+<title>LibroObra v7.0.1</title>
 <!--
+  index_libroobra_v7_0_1.html — LibroObra v7.0.1 (07-oct-2026)
+  Backend: gas_libroobra_v7_0_0.gs (SIN CAMBIOS). sw.js: sw_libroobra_v7_0_1.js.
+
+  QUÉ CAMBIÓ EN v7.0.1 (respecto a v7.0.0) — ajustes de interfaz del PdC
+  acordados el 07-oct tras las primeras pruebas:
+   - Computadora: dos columnas. Izquierda, los tipos; derecha, la línea
+     de tiempo del día (todos los eventos en orden horario, con 🗑).
+   - Franja fija: tarjeta de fecha/avance + "Completar parte" / "Todo sin
+     novedad" no se mueven; abajo hace scroll la lista (en la computadora
+     cada columna con su scroll). En el celular la franja se achica al
+     bajar y se expande al volver arriba.
+   - Carga en el panel del tipo: al expandirlo se ven valores, hora,
+     observación y Registrar (lo mismo que el asistente, sin modal y sin
+     "+ Cargar"). "Completar parte" abre el primer tipo pendiente y, al
+     registrar o "Saltar", pasa al siguiente.
+   - Ícono ⟳ en el header (a la izquierda de "Buscar"): envía la cola,
+     trae el PdC y las comunicaciones y refresca la sección (repite la
+     búsqueda en Buscar). Reemplaza "↻ Sincronizar ahora" del pie.
+
+  (historia anterior)
   index_libroobra_v7_0_0.html — LibroObra v7.0.0 (07-oct-2026)
   Backend: gas_libroobra_v7_0_0.gs (publicar como Nueva versión de la
   implementación actual: la API_URL no cambia). Nuevo: sw.js en el repo.
@@ -347,6 +367,10 @@ input, select, textarea { font-family: inherit; }
   font-size: .75rem; color: rgba(255,255,255,.35); padding: 5px 10px; border-radius: var(--radius-sm);
   white-space: nowrap; transition: color .15s, background .15s; margin-left: 4px;
 }
+.hdr-actualizar { font-size: 1.05rem; line-height: 1; padding: 4px 9px; }
+.hdr-act-ico { display: inline-block; }
+.hdr-actualizar.girando .hdr-act-ico { animation: girar .8s linear infinite; }
+body:not(.modo-cel) .hdr-actualizar { order: 9; }   /* v7.0.1 — computadora: al final del menú */
 .hdr-nav-guia:hover { color: rgba(255,255,255,.70); background: rgba(255,255,255,.06); }
 .hdr-sep  { flex: 1; }
 .hdr-obra { font-size: .82rem; font-weight: 600; color: rgba(255,255,255,.80); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; }
@@ -985,7 +1009,6 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 .pdc-ev-obs { font-size: .74rem; color: var(--muted); font-style: italic; word-break: break-word; }
 .pdc-ev-borrar { background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 8px; font-size: .8rem; }
 .pdc-ev-borrar:hover { border-color: #fecaca; background: #fef2f2; }
-.pdc-agregar { margin-top: 10px; width: 100%; padding: 10px; border: 1px dashed var(--border); border-radius: var(--radius-sm); background: none; color: var(--accent2); font-weight: 600; font-size: .82rem; }
 .pdc-imp { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 99px; font-size: .68rem; font-weight: 700; flex-shrink: 0; }
 .pdc-imp.i0 { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
 .pdc-imp.i1 { background: #fef9c3; color: #854d0e; }
@@ -998,25 +1021,19 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 .pdc-pie { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: .74rem; color: var(--muted); padding: 2px 2px 10px; }
 .pdc-pie .btn { margin-left: auto; }
 
-/* Wizard: una pantalla por tipo */
-#pdc-wiz { position: fixed; inset: 0; z-index: 520; background: rgba(15,23,42,.5); display: none; align-items: center; justify-content: center; padding: 20px; }
-#pdc-wiz.open { display: flex; }
-.wiz-caja { background: var(--surface); border-radius: var(--radius); width: 100%; max-width: 560px; max-height: 92vh; display: flex; flex-direction: column; box-shadow: var(--shadow-md); animation: fadeUp .2s ease; }
-.wiz-cab { padding: 14px 18px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 10px; }
-.wiz-paso { font-size: .64rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
-.wiz-tipo { font-family: 'Bebas Neue', sans-serif; font-size: 1.65rem; letter-spacing: 1px; color: var(--accent2); line-height: 1.05; }
-.wiz-ayuda { font-size: .76rem; color: var(--muted); }
-.wiz-pasos { display: flex; gap: 3px; margin-top: 8px; }
-.wiz-pasos i { flex: 1; height: 4px; border-radius: 2px; background: var(--border); }
-.wiz-pasos i.hecho { background: var(--success); }
-.wiz-pasos i.act { background: var(--accent); }
-.wiz-cuerpo { padding: 14px 18px; overflow-y: auto; flex: 1; min-height: 0; }
+/* v7.0.1 — Carga en el panel del tipo (lo que hacía el wizard, sin modal) */
+.pdc-form { padding-top: 10px; }
+.pdc-form-ayuda { font-size: .76rem; color: var(--muted); margin-bottom: 8px; }
+.pdc-ev-lista:empty { display: none; }
+.pdc-ev-lista + .pdc-form { border-top: 1px solid var(--border); margin-top: 4px; }
+.pdc-ev-lista:empty + .pdc-form { border-top: none; margin-top: 0; }
+.pdc-tipo.secuencia { box-shadow: 0 0 0 2px var(--accent), var(--shadow); }
 .wiz-hora { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 10px 7px 12px; font-size: .82rem; margin-bottom: 12px; }
 .wiz-hora-panel { margin: -4px 0 12px; display: flex; flex-direction: column; gap: 8px; }
 .wiz-rapidos { display: flex; gap: 6px; }
 .wiz-rapidos button { flex: 1; padding: 8px 2px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); font-size: .78rem; font-weight: 600; }
 .wiz-valores { display: flex; flex-direction: column; gap: 8px; }
-.wiz-valor { width: 100%; text-align: left; padding: 13px 16px; border-radius: var(--radius); border: 2px solid var(--border); background: var(--surface); font-size: 1rem; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 10px; min-height: 54px; transition: transform .08s; }
+.wiz-valor { width: 100%; text-align: left; padding: 11px 14px; border-radius: var(--radius); border: 2px solid var(--border); background: var(--surface); font-size: .95rem; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 10px; min-height: 48px; transition: transform .08s; }
 .wiz-valor:active { transform: scale(.985); }
 .wiz-valor.sinnov { border-color: #86efac; background: #f0fdf4; color: #166534; }
 .wiz-valor.sel { border-color: var(--accent2); background: var(--accent2); color: #fff; }
@@ -1026,10 +1043,39 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 .wiz-nota { font-size: .72rem; color: var(--muted); margin-top: 8px; }
 .wiz-obs-lbl { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 14px 0 5px; display: block; }
 .wiz-obs-lbl .req { color: var(--danger); text-transform: none; letter-spacing: 0; }
-.wiz-pie { padding: 12px 18px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); display: flex; gap: 8px; }
-.wiz-pie button { flex: 1; padding: 13px; border-radius: var(--radius-sm); font-size: .9rem; font-weight: 700; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
-.wiz-pie .pri { background: var(--accent); color: #fff; border-color: var(--accent-border); flex: 2; }
-.wiz-pie .pri:disabled { opacity: .45; cursor: default; }
+.pdc-form-pie { display: flex; gap: 8px; margin-top: 12px; }
+.pdc-form-pie button { flex: 1; padding: 12px; border-radius: var(--radius-sm); font-size: .9rem; font-weight: 700; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.pdc-form-pie .pri { background: var(--accent); color: #fff; border-color: var(--accent-border); flex: 2; }
+.pdc-form-pie .pri:disabled { opacity: .45; cursor: default; }
+
+/* v7.0.1 — Franja fija + cuerpo (celular: una columna; computadora: tipos | línea de tiempo) */
+.pdc-fija { display: flex; flex-direction: column; gap: 12px; }
+.pdc-cuerpo { display: flex; flex-direction: column; gap: 12px; }
+.pdc-col-linea { display: none; }
+.pdc-linea-cab { position: sticky; top: 0; z-index: 2; background: var(--surface); padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: .9rem; color: var(--accent2); display: flex; align-items: baseline; gap: 8px; }
+.pdc-linea-cab small { font-weight: 500; color: var(--muted); font-size: .76rem; }
+.pdc-linea { padding: 2px 16px 12px; }
+.pdc-linea-vacia { color: var(--muted); font-size: .84rem; padding: 24px 0; text-align: center; }
+.pdc-lt { display: grid; grid-template-columns: 48px 1fr auto; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px dashed var(--border); }
+.pdc-lt:last-child { border-bottom: none; }
+.pdc-lt-tipo { font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+body:not(.modo-cel) .pdc-wrap { max-width: 1280px; }
+body:not(.modo-cel) .pdc-fija { display: grid; grid-template-columns: 1fr minmax(340px, 460px); grid-template-areas: "cab acc" "aviso aviso"; gap: 12px; }
+body:not(.modo-cel) .pdc-fija .pdc-cab { grid-area: cab; }
+body:not(.modo-cel) .pdc-fija .pdc-acciones { grid-area: acc; }
+body:not(.modo-cel) .pdc-fija .pdc-aviso { grid-area: aviso; }
+body:not(.modo-cel) .pdc-fija .pdc-acciones { align-self: end; }
+body:not(.modo-cel) .pdc-cuerpo { display: grid; grid-template-columns: minmax(380px, 480px) 1fr; gap: 16px; height: var(--pdc-cuerpo-h, auto); min-height: 280px; }
+body:not(.modo-cel) .pdc-cuerpo.sin-cat { grid-template-columns: 1fr; height: auto; }
+body:not(.modo-cel) .pdc-col { overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
+body:not(.modo-cel) .pdc-col-tipos { padding: 2px 6px 2px 2px; }
+body:not(.modo-cel) .pdc-col-linea { display: block; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+body:not(.modo-cel) .pdc-cuerpo.sin-cat .pdc-col-linea { display: none; }
+body:not(.modo-cel) .pdc-tipo-det .pdc-ev-lista { display: none; }   /* los eventos se ven en la línea de tiempo */
+body:not(.modo-cel) .wiz-valores { display: grid; grid-template-columns: 1fr 1fr; }
+body:not(.modo-cel) .pdc-pie { padding-top: 10px; }
+body.pdc-escritorio #main-content { padding-bottom: 16px; }
+body.modo-cel .pdc-cuerpo { min-height: calc(100vh - var(--hdr-alto, 88px)); }   /* margen para que la franja compacta no titile */
 
 /* Toast con Deshacer */
 #pdc-toast { position: fixed; left: 12px; right: 12px; bottom: 16px; z-index: 960; max-width: 520px; margin: 0 auto; background: var(--accent2); color: #fff; border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow-md); display: none; overflow: hidden; }
@@ -1044,9 +1090,19 @@ body.modo-cel .nav-pdc-corto { display: none; }
 /* Modo celular: solo PdC + Buscar */
 body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display: none; }
 @media (max-width: 640px) {
-  #pdc-wiz { padding: 0; align-items: stretch; }
-  .wiz-caja { max-width: none; max-height: none; height: 100%; border-radius: 0; }
   .pdc-acciones { grid-template-columns: 1fr 1fr; }
+  /* v7.0.1 — franja fija bajo el header; al bajar se compacta (body.pdc-compacta) */
+  body.modo-cel .pdc-fija { position: sticky; top: var(--hdr-alto, 88px); z-index: 20; background: var(--bg); margin: -14px -12px 0; padding: 14px 12px 10px; gap: 10px; }
+  body.modo-cel.pdc-compacta .pdc-fija { padding-top: 8px; padding-bottom: 8px; gap: 8px; box-shadow: 0 4px 10px -6px rgba(15,23,42,.25); }
+  body.modo-cel.pdc-compacta .pdc-cab { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
+  body.modo-cel.pdc-compacta .pdc-cab-fila { display: contents; }
+  body.modo-cel.pdc-compacta .pdc-titulo, body.modo-cel.pdc-compacta .pdc-dias { display: none; }
+  body.modo-cel.pdc-compacta .pdc-dia { font-size: .88rem; white-space: nowrap; }
+  body.modo-cel.pdc-compacta .pdc-prog { order: 1; flex: 1; margin: 0; gap: 6px; min-width: 0; }
+  body.modo-cel.pdc-compacta .pdc-barra { height: 6px; }
+  body.modo-cel.pdc-compacta .pdc-prog-txt { font-size: .72rem; }
+  body.modo-cel.pdc-compacta .pdc-pill { order: 2; padding: 3px 8px; font-size: .68rem; }
+  body.modo-cel.pdc-compacta .pdc-btn-grande { padding: 9px 10px; font-size: .85rem; }
   /* encabezado en 2 renglones: logo + menú / obra + perfil + botones */
   body.modo-cel #app-header { gap: 6px 8px; }
   body.modo-cel .hdr-obra-prefix { display: none; }
@@ -1064,7 +1120,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
   <div class="caja">
     <span class="caja-emoji">📋</span>
     <div class="caja-logo">LibroObra</div>
-    <div class="caja-version" id="version-login">v7.0.0</div>
+    <div class="caja-version" id="version-login">v7.0.1</div>
     <div class="caja-sub">Registro de comunicaciones de obra</div>
 
     <div id="paso-email" class="login-paso activo">
@@ -1119,6 +1175,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
     <nav class="hdr-nav">
       <button class="hdr-nav-btn active" id="nav-inicio" onclick="showSection('inicio')" disabled>Inicio</button>
       <button class="hdr-nav-btn" id="nav-comunicaciones" onclick="showSection('comunicaciones')" disabled>Comunicaciones</button>
+      <button class="hdr-nav-btn nav-cel hdr-actualizar" id="nav-actualizar" onclick="actualizarTodo()" title="Actualizar (Parte de Contrato y comunicaciones)" aria-label="Actualizar"><span class="hdr-act-ico">⟳</span></button>
       <button class="hdr-nav-btn nav-cel" id="nav-buscar" onclick="showSection('buscar')" disabled>Buscar</button>
       <button class="hdr-nav-btn" id="nav-conexiones" onclick="showSection('conexiones')" disabled>Conexiones</button>
       <button class="hdr-nav-btn" id="nav-hitos" onclick="showSection('hitos')" disabled>Hitos</button>
@@ -1131,7 +1188,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
     <button class="hdr-btn" id="btn-cambiar-obra" onclick="cambiarObra()">Cambiar obra</button>
     <button class="hdr-btn hdr-btn-instalar hidden" id="btn-instalar">Instalar</button>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version" id="version-app">v7.0.0</span>
+    <span class="hdr-version" id="version-app">v7.0.1</span>
     <button class="hdr-btn" onclick="confirmarCerrarSesion()">Salir</button>
   </header>
 
@@ -1323,9 +1380,10 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
       </div>
     </section>
 
-    <!-- ── PARTE DE CONTRATO (v7.0.0) ── -->
+    <!-- ── PARTE DE CONTRATO (v7.0.0 · v7.0.1: franja fija + dos columnas) ── -->
     <section id="sec-pdc" class="section">
       <div class="pdc-wrap">
+        <div class="pdc-fija" id="pdc-fija">
         <div class="card pdc-cab">
           <div class="pdc-cab-fila">
             <div>
@@ -1342,8 +1400,17 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
           <button type="button" class="pdc-btn-grande pri" id="pdc-btn-completar" onclick="pdcCompletarParte()">Completar parte</button>
           <button type="button" class="pdc-btn-grande sec" id="pdc-btn-sinnov" onclick="pdcTodoSinNovedad()">Todo sin novedad</button>
         </div>
-        <div id="pdc-lista" class="pdc-lista"></div>
-        <div class="pdc-pie" id="pdc-pie"></div>
+        </div>
+        <div class="pdc-cuerpo" id="pdc-cuerpo">
+          <div class="pdc-col pdc-col-tipos" id="pdc-col-tipos">
+            <div id="pdc-lista" class="pdc-lista"></div>
+            <div class="pdc-pie" id="pdc-pie"></div>
+          </div>
+          <div class="pdc-col pdc-col-linea" id="pdc-col-linea">
+            <div class="pdc-linea-cab" id="pdc-linea-cab">Línea de tiempo</div>
+            <div class="pdc-linea" id="pdc-linea"></div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1672,8 +1739,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
 
 <div id="spinner"><div class="spinner-ring"></div><div id="spinner-msg"></div></div>
 <div id="toast" class="toast"></div>
-<!-- v7.0.0 — Parte de Contrato: wizard + toast con Deshacer -->
-<div id="pdc-wiz" role="dialog" aria-modal="true"><div class="wiz-caja" id="wiz-caja"></div></div>
+<!-- v7.0.0 — Parte de Contrato: toast con Deshacer (v7.0.1: la carga va en el panel del tipo, sin wizard) -->
 <div id="pdc-toast" role="status" aria-live="polite"><span class="pt-txt" id="pdc-toast-txt"></span><button type="button" id="pdc-toast-undo">Deshacer</button><div class="pt-prog" id="pdc-toast-prog"></div></div>
 <div id="tareas-panel" role="status" aria-live="polite"></div>
 <div id="hm-tooltip" class="tooltip-flotante"></div>
@@ -1685,7 +1751,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
 // ══════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════
-const APP_VERSION = 'v7.0.0';
+const APP_VERSION = 'v7.0.1';
 const API_URL = 'https://script.google.com/macros/s/AKfycbxDN2F_K6z4wQXDJAyyZ6EdoSqoQgHv8d8f7gXGo-QYdke3DXW6hvZtEnmEy9xFpjTO/exec';
 const SESION_KEY = 'lo_sesion';
 const OBRA_KEY = 'lo_obra_actual';
@@ -2536,7 +2602,7 @@ async function cargarDatosObra(recarga) {
     } else {
       pdcAbrirObra(obraId);
       if (estado.modoCel && estado.seccionAuto && estado.seccion !== 'pdc') showSection('pdc', true);
-      if (estado.seccion === 'pdc') {
+      if (estado.seccion === 'pdc' || recarga) {   // v7.0.1 — ⟳ del header: también el PdC
         if (enFondo) tareaIniciar('pdc', 'Actualizando el Parte de Contrato…');
         await pdcTraer();
         if (seq !== estado.cargaSeq) return;
@@ -2611,6 +2677,24 @@ async function cargarDatosObra(recarga) {
 }
 function recargarDatosObra() { if (!estado.cargando) cargarDatosObra(true); }
 
+/** v7.0.1 — ⟳ del header: envía la cola del PdC, trae PdC + comunicaciones y refresca la sección (repite la búsqueda). */
+async function actualizarTodo() {
+  const b = document.getElementById('nav-actualizar');
+  if (b.classList.contains('girando') || !estado.obra) return;
+  if (estado.offline) { reconectar(); return; }
+  if (estado.cargando) return;
+  b.classList.add('girando'); b.disabled = true;
+  try {
+    if (estado.puedePdC && pdc.queue.length) { pdc.syncErr = ''; await pdcEnviar(); }
+    await cargarDatosObra(true);
+    if (estado.datosListos && estado.seccion === 'buscar' && estado.busq.termino) ejecutarBusqueda();
+  } catch (err) {
+    console.warn('[actualizarTodo]', err);
+  } finally {
+    b.classList.remove('girando'); b.disabled = false;
+  }
+}
+
 // ══════════════════════════════════════════════
 // NAVEGACIÓN (todo en memoria — no pide nada al backend)
 // ══════════════════════════════════════════════
@@ -2632,6 +2716,7 @@ function showSection(id, forzar) {
   if (id === 'buscar' && estado.datosListos) renderBuscar();   // v6.1.2
   if (id === 'conexiones' && estado.datosListos) renderConexiones();   // v6.1.3
   if (id === 'pdc') pdcAlEntrar(!forzar);   // v7.0.0
+  else pdcAjustarAlto();                      // v7.0.1 — saca las clases de la franja fija del PdC
 }
 
 // ══════════════════════════════════════════════
@@ -4843,7 +4928,9 @@ const pdc = {
   flushing: false, inflight: 0, syncErr: '', flushTimer: null,
   dia: '',                 // '' = hoy (sigue al reloj); si no, 'yyyy-MM-dd' elegido
   desde: '',               // inicio de la ventana que trajo el servidor
-  sinPdC: false, mensaje: '', cargando: false, ultimoPull: 0, pullSeq: 0, abiertos: {}
+  sinPdC: false, mensaje: '', cargando: false, ultimoPull: 0, pullSeq: 0, abiertos: {},
+  forms: {},               // v7.0.1 — carga en el panel del tipo: { tipoId: {sel, obs, hora, panelHora} }
+  secuencia: ''            // v7.0.1 — "Completar parte": tipo abierto en la recorrida
 };
 
 // ── Dispositivo (localStorage, por obra) ──
@@ -4875,7 +4962,7 @@ function pdcAbrirObra(obraId) {
     obraId: obraId, cat: pdcCatGuardado(obraId), recs: pdcLsGet(pdcK('recs', obraId), {}),
     queue: pdcLsGet(pdcK('queue', obraId), []), lastSync: pdcLsGet(pdcK('last', obraId), null),
     flushing: false, inflight: 0, syncErr: '', dia: '', desde: '', sinPdC: false, mensaje: '',
-    cargando: false, ultimoPull: 0, abiertos: {}
+    cargando: false, ultimoPull: 0, abiertos: {}, forms: {}, secuencia: ''
   });
 }
 
@@ -5099,8 +5186,12 @@ function renderPdc() {
     document.getElementById('pdc-dias').innerHTML = '';
     lista.innerHTML = pdc.cargando ? '<div class="pdc-cargando"><span class="btn-mini-spin"></span> Cargando el catálogo de la obra…</div>' : '';
     document.getElementById('pdc-pie').innerHTML = '';
+    document.getElementById('pdc-cuerpo').classList.add('sin-cat');
+    document.getElementById('pdc-linea').innerHTML = '';
+    pdcAjustarAlto();
     return;
   }
+  document.getElementById('pdc-cuerpo').classList.remove('sin-cat');
   const st = pdcEstadoDia(dia);
   const total = st.tipos.length, hechos = st.hechos;
   const barra = document.getElementById('pdc-barra');
@@ -5131,6 +5222,7 @@ function renderPdc() {
 
   const pend = {};
   pdc.queue.forEach(function (o) { pend[o.rec.id] = true; });
+  const foco = pdcCapturarFoco();
   lista.innerHTML = st.tipos.map(function (t) {
     const evs = st.porTipo[t.tipoId] || [];
     const ok = evs.length > 0;
@@ -5142,37 +5234,67 @@ function renderPdc() {
     }
     const impMax = evs.reduce(function (m, e) { return Math.max(m, Number(e.impacto) || 0); }, 0);
     const hayPend = evs.some(function (e) { return pend[e.id]; });
-    const det = evs.map(function (e) {
-      return '<div class="pdc-ev">' +
-        '<span class="pdc-ev-hora">' + escaparHtml(pdcHora(e.fechaHora)) + '</span>' +
-        '<div class="pdc-ev-txt"><div>' + escaparHtml(pdcNombreValor(e)) + ' ' + pdcImpactoHtml(e.impacto) + pdcRespHtml(e.responsable) +
-        (pend[e.id] ? ' <span class="pdc-ev-pend" title="Guardado en el dispositivo, sin enviar">⏳</span>' : '') + '</div>' +
-        (e.observacion ? '<div class="pdc-ev-obs">' + escaparHtml(e.observacion) + '</div>' : '') + '</div>' +
-        '<button type="button" class="pdc-ev-borrar" data-borrar="' + escaparHtml(e.id) + '" title="Borrar este evento">🗑</button></div>';
-    }).join('');
-    return '<div class="pdc-tipo ' + (ok ? 'ok' : 'pend') + (pdc.abiertos[t.tipoId] ? ' abierto' : '') + '" data-tipo="' + escaparHtml(t.tipoId) + '">' +
+    const abierto = !!pdc.abiertos[t.tipoId];
+    const det = evs.map(function (e) { return pdcEvHtml(e, pend, false); }).join('');
+    return '<div class="pdc-tipo ' + (ok ? 'ok' : 'pend') + (abierto ? ' abierto' : '') + (pdc.secuencia === t.tipoId ? ' secuencia' : '') + '" data-tipo="' + escaparHtml(t.tipoId) + '">' +
       '<button type="button" class="pdc-tipo-cab" data-toggle="' + escaparHtml(t.tipoId) + '">' +
       '<span class="pdc-tipo-ico">' + (ok ? '✓' : '!') + '</span>' +
       '<span class="pdc-tipo-info"><span class="pdc-tipo-nombre">' + escaparHtml(t.tipo) + '</span>' +
       '<span class="pdc-tipo-estado">' + escaparHtml(resumen) + (hayPend ? ' ⏳' : '') + '</span></span>' +
       (ok ? pdcImpactoHtml(impMax) : '') + '<span class="pdc-chev">›</span></button>' +
-      '<div class="pdc-tipo-det">' + det +
-      '<button type="button" class="pdc-agregar" data-agregar="' + escaparHtml(t.tipoId) + '">+ ' + (ok ? 'Agregar otro evento' : 'Cargar') + '</button></div></div>';
+      '<div class="pdc-tipo-det"><div class="pdc-ev-lista">' + det + '</div>' + (abierto ? pdcFormHtml(t, dia) : '') + '</div></div>';
   }).join('') || '<div class="pdc-aviso">La obra no tiene tipos activos en PdC_Tipos.</div>';
+  pdcRestaurarFoco(foco);
+
+  // v7.0.1 — línea de tiempo del día (computadora)
+  const evDia = pdcEventosDia(dia);
+  document.getElementById('pdc-linea-cab').innerHTML = 'Línea de tiempo <small>' + escaparHtml(pdcDiaLabel(dia)) + ' · ' +
+    evDia.length + (evDia.length === 1 ? ' evento' : ' eventos') + '</small>';
+  document.getElementById('pdc-linea').innerHTML = evDia.length
+    ? evDia.map(function (e) { return pdcEvHtml(e, pend, true); }).join('')
+    : '<div class="pdc-linea-vacia">Sin eventos registrados en el día.</div>';
 
   const n = pdc.queue.length;
   document.getElementById('pdc-pie').innerHTML =
     (n ? '<span>' + n + (n === 1 ? ' evento guardado' : ' eventos guardados') + ' en el dispositivo, sin enviar.</span> ' : '') +
     (pdc.lastSync ? '<span>Última sincronización: ' + escaparHtml(pdcDiaLabel(pdc.lastSync.slice(0, 10)).replace('Hoy · ', 'hoy ') + ' ' + pdcHora(pdc.lastSync)) + '.</span> ' : '') +
-    (!pdc.cat.config.PDC_FECHA_INICIO ? '<span>La obra no tiene <b>PDC_FECHA_INICIO</b>: los días anteriores no se marcan como incompletos.</span> ' : '') +
-    (!estado.offline ? '<button type="button" class="btn btn-secondary btn-sm" id="pdc-btn-sync">↻ Sincronizar ahora</button>' : '');
+    (!pdc.cat.config.PDC_FECHA_INICIO ? '<span>La obra no tiene <b>PDC_FECHA_INICIO</b>: los días anteriores no se marcan como incompletos.</span> ' : '');
+  pdcAjustarAlto();
+}
+
+/** Renglón de un evento: en el panel del tipo (conTipo=false) o en la línea de tiempo (conTipo=true). */
+function pdcEvHtml(e, pend, conTipo) {
+  const t = conTipo ? pdcTipo(e.tipoId) : null;
+  return '<div class="' + (conTipo ? 'pdc-lt' : 'pdc-ev') + '">' +
+    '<span class="pdc-ev-hora">' + escaparHtml(pdcHora(e.fechaHora)) + '</span>' +
+    '<div class="pdc-ev-txt">' + (conTipo ? '<div class="pdc-lt-tipo">' + escaparHtml(t ? t.tipo : e.tipoId) + '</div>' : '') +
+    '<div>' + escaparHtml(pdcNombreValor(e)) + ' ' + pdcImpactoHtml(e.impacto) + pdcRespHtml(e.responsable) +
+    (pend[e.id] ? ' <span class="pdc-ev-pend" title="Guardado en el dispositivo, sin enviar">⏳</span>' : '') + '</div>' +
+    (e.observacion ? '<div class="pdc-ev-obs">' + escaparHtml(e.observacion) + '</div>' : '') + '</div>' +
+    '<button type="button" class="pdc-ev-borrar" data-borrar="' + escaparHtml(e.id) + '" title="Borrar este evento">🗑</button></div>';
+}
+
+/** Re-render sin perder lo que se está escribiendo (pull cada 2 min, sincronización, etc.). */
+function pdcCapturarFoco() {
+  const a = document.activeElement;
+  if (!a || !a.id || !document.getElementById('pdc-lista').contains(a)) return null;
+  let s = null, f = null;
+  try { s = a.selectionStart; f = a.selectionEnd; } catch (x) { /* datetime-local */ }
+  return { id: a.id, s: s, f: f };
+}
+function pdcRestaurarFoco(x) {
+  if (!x) return;
+  const el = document.getElementById(x.id);
+  if (!el) return;
+  el.focus({ preventScroll: true });
+  try { if (x.s != null) el.setSelectionRange(x.s, x.f); } catch (e) { /* datetime-local */ }
 }
 
 function pdcElegirDia(d) {
   const hoy = hoyISO();
   if (!d || d > hoy) return;
   pdc.dia = d === hoy ? '' : d;
-  pdc.abiertos = {};
+  pdc.abiertos = {}; pdc.forms = {}; pdc.secuencia = '';
   renderPdc();
   if (pdc.desde && d < pdc.desde && !estado.offline) pdcTraer(d);   // más viejo que la ventana: se pide desde ese día
 }
@@ -5181,15 +5303,42 @@ document.getElementById('sec-pdc').addEventListener('click', function (e) {
   const dia = e.target.closest('[data-dia]');
   if (dia) { pdcElegirDia(dia.dataset.dia); return; }
   const tg = e.target.closest('[data-toggle]');
-  if (tg) { const id = tg.dataset.toggle; pdc.abiertos[id] = !pdc.abiertos[id]; tg.closest('.pdc-tipo').classList.toggle('abierto', !!pdc.abiertos[id]); return; }
-  const ag = e.target.closest('[data-agregar]');
-  if (ag) { pdcAbrirWizard([ag.dataset.agregar], true); return; }
+  if (tg) { pdcToggleTipo(tg.dataset.toggle); return; }
   const br = e.target.closest('[data-borrar]');
   if (br) { pdcBorrarEvento(br.dataset.borrar); return; }
-  if (e.target.closest('#pdc-btn-sync')) { pdc.syncErr = ''; pdcEnviar().then(function () { return pdcTraer(); }); }
+  const fm = e.target.closest('[data-form]');
+  if (!fm) return;
+  const tipoId = fm.dataset.form, f = pdcForm(tipoId);
+  const v = e.target.closest('[data-valor]');
+  if (v) { pdcFormElegir(tipoId, v.dataset.valor); return; }
+  const h = e.target.closest('[data-hace]');
+  if (h) { const m = Number(h.dataset.hace); f.hora = m ? new Date(Date.now() - m * 60000) : null; renderPdc(); return; }
+  const b = e.target.closest('[data-w]');
+  if (!b) return;
+  const a = b.dataset.w;
+  if (a === 'registrar') pdcFormRegistrar(tipoId);
+  else if (a === 'hora') { f.panelHora = !f.panelHora; renderPdc(); }
+  else if (a === 'saltar') pdcSecuenciaSiguiente(tipoId);
+  else if (a === 'cerrar') pdcCerrarTipo(tipoId);
+});
+document.getElementById('sec-pdc').addEventListener('input', function (e) {
+  const fm = e.target.closest('[data-form]');
+  if (!fm || !e.target.classList.contains('pdc-obs')) return;
+  const f = pdcForm(fm.dataset.form);
+  f.obs = e.target.value;
+  e.target.classList.toggle('req-vacio', pdcFormObsObligatoria(f) && !f.obs.trim());
+  const btn = fm.querySelector('[data-w="registrar"]');
+  if (btn) btn.disabled = !pdcFormPuede(f);
 });
 document.getElementById('sec-pdc').addEventListener('change', function (e) {
-  if (e.target.id === 'pdc-fecha-in' && e.target.value) pdcElegirDia(e.target.value);
+  if (e.target.id === 'pdc-fecha-in' && e.target.value) { pdcElegirDia(e.target.value); return; }
+  const fm = e.target.closest('[data-form]');
+  if (!fm || !e.target.classList.contains('pdc-dt') || !e.target.value) return;
+  const d = new Date(e.target.value);
+  if (isNaN(d)) return;
+  if (d.getTime() > Date.now() + 60000) { mostrarAviso('La hora del evento no puede ser futura.'); renderPdc(); return; }
+  pdcForm(fm.dataset.form).hora = d;
+  renderPdc();
 });
 
 async function pdcBorrarEvento(id) {
@@ -5224,145 +5373,169 @@ async function pdcTodoSinNovedad() {
     return { op: 'add', rec: { id: uuid(), fecha: dia, fechaHora: pdcIsoLocal(fh), tipoId: t.tipoId, valorId: pdcSinNovedadDe(t.tipoId).valorId,
       observacion: '', origen: 'todo_sin_novedad', grupoId: grupo } };
   });
+  tipos.forEach(function (t) { delete pdc.abiertos[t.tipoId]; delete pdc.forms[t.tipoId]; if (pdc.secuencia === t.tipoId) pdc.secuencia = ''; });
   if (navigator.vibrate) navigator.vibrate(40);
   pdcHacerOps(ops, PDC_FLUSH_MS);
   pdcToast('✓ ' + tipos.length + (tipos.length === 1 ? ' tipo' : ' tipos') + ' sin novedad · ' + pdcDiaLabel(dia), ops.map(function (o) { return o.rec.id; }));
 }
 
-// ── Wizard (una pantalla por tipo) ──
-const wiz = { tipos: [], i: 0, dia: '', hora: null, sel: [], obs: '', panelHora: false, uno: false };
+// ── v7.0.1 — Carga en el panel del tipo (lo que hacía el wizard, sin modal) ──
+function pdcForm(tipoId) { return pdc.forms[tipoId] || (pdc.forms[tipoId] = { sel: [], obs: '', hora: null, panelHora: false }); }
+function pdcFormFechaHora(f) { return f.hora || pdcFechaHoraDefault(pdcDiaSel()); }
+function pdcFormObsObligatoria(f) { return f.sel.some(function (id) { const v = pdcValor(id); return v && v.obsObligatoria; }); }
+function pdcFormPuede(f) { return f.sel.length > 0 && !(pdcFormObsObligatoria(f) && !f.obs.trim()); }
 
-function pdcCompletarParte() {
-  const st = pdcEstadoDia(pdcDiaSel());
-  pdcAbrirWizard(st.faltan.map(function (t) { return t.tipoId; }), false);
-}
-function pdcAbrirWizard(tipoIds, uno) {
-  if (!pdc.cat || !tipoIds.length) return;
-  Object.assign(wiz, { tipos: tipoIds, i: 0, dia: pdcDiaSel(), hora: null, sel: [], obs: '', panelHora: false, uno: !!uno });
-  document.getElementById('pdc-wiz').classList.add('open');
-  renderWiz();
-}
-function pdcCerrarWizard() { document.getElementById('pdc-wiz').classList.remove('open'); renderPdc(); }
-function wizFechaHora() { return wiz.hora || pdcFechaHoraDefault(wiz.dia); }
-function wizObsObligatoria() { return wiz.sel.some(function (id) { const v = pdcValor(id); return v && v.obsObligatoria; }); }
-function wizPuedeRegistrar() { return wiz.sel.length > 0 && !(wizObsObligatoria() && !wiz.obs.trim()); }
-
-function renderWiz() {
-  const t = pdcTipo(wiz.tipos[wiz.i]);
-  if (!t) { pdcCerrarWizard(); return; }
-  const vals = pdcValoresDe(t.tipoId);
-  const fh = wizFechaHora(), hoy = hoyISO();
-  const diaEv = pdcDayKey(fh);
-  const horaTxt = !wiz.hora && wiz.dia === hoy ? 'Ahora' : pdcHora(pdcIsoLocal(fh));
-  const obsReq = wizObsObligatoria();
-  const pasos = wiz.uno ? '' : '<div class="wiz-pasos">' + wiz.tipos.map(function (x, k) {
-    return '<i class="' + (k < wiz.i ? 'hecho' : k === wiz.i ? 'act' : '') + '"></i>';
-  }).join('') + '</div>';
-  const quedan = wiz.tipos.length - wiz.i - 1;
-  document.getElementById('wiz-caja').innerHTML =
-    '<div class="wiz-cab"><div style="flex:1;min-width:0">' +
-    '<div class="wiz-paso">' + (wiz.uno ? 'Agregar evento' : 'Tipo ' + (wiz.i + 1) + ' de ' + wiz.tipos.length) + ' · ' + escaparHtml(pdcDiaLabel(wiz.dia)) + '</div>' +
-    '<div class="wiz-tipo">' + escaparHtml(t.tipo) + '</div>' +
-    (t.ayuda ? '<div class="wiz-ayuda">' + escaparHtml(t.ayuda) + '</div>' : '') + pasos + '</div>' +
-    '<button type="button" class="modal-close" data-w="cerrar" title="Cerrar">×</button></div>' +
-    '<div class="wiz-cuerpo">' +
-    '<div class="wiz-hora"><span>🕒 <b>' + escaparHtml(horaTxt) + '</b>' + (diaEv !== wiz.dia ? ' · va al parte del ' + escaparHtml(pdcDiaLabel(diaEv)) : '') + '</span>' +
-    '<button type="button" class="btn btn-secondary btn-sm" data-w="hora">' + (wiz.panelHora ? 'Listo' : 'Cambiar hora') + '</button></div>' +
-    (wiz.panelHora ? '<div class="wiz-hora-panel">' +
-      (wiz.dia === hoy ? '<div class="wiz-rapidos"><button type="button" data-hace="0">Ahora</button><button type="button" data-hace="10">hace 10\'</button>' +
+function pdcFormHtml(t, dia) {
+  const f = pdcForm(t.tipoId), vals = pdcValoresDe(t.tipoId), hoy = hoyISO(), id = escaparHtml(t.tipoId);
+  const fh = pdcFormFechaHora(f), diaEv = pdcDayKey(fh);
+  const horaTxt = !f.hora && dia === hoy ? 'Ahora' : pdcHora(pdcIsoLocal(fh));
+  const obsReq = pdcFormObsObligatoria(f);
+  const enSecuencia = pdc.secuencia === t.tipoId;
+  return '<div class="pdc-form" data-form="' + id + '">' +
+    (t.ayuda ? '<div class="pdc-form-ayuda">' + escaparHtml(t.ayuda) + '</div>' : '') +
+    '<div class="wiz-hora"><span>🕒 <b>' + escaparHtml(horaTxt) + '</b>' + (diaEv !== dia ? ' · va al parte del ' + escaparHtml(pdcDiaLabel(diaEv)) : '') + '</span>' +
+    '<button type="button" class="btn btn-secondary btn-sm" data-w="hora">' + (f.panelHora ? 'Listo' : 'Cambiar hora') + '</button></div>' +
+    (f.panelHora ? '<div class="wiz-hora-panel">' +
+      (dia === hoy ? '<div class="wiz-rapidos"><button type="button" data-hace="0">Ahora</button><button type="button" data-hace="10">hace 10\'</button>' +
         '<button type="button" data-hace="30">30\'</button><button type="button" data-hace="60">1 h</button><button type="button" data-hace="120">2 h</button></div>' : '') +
-      '<input type="datetime-local" class="form-control" id="wiz-dt" value="' + pdcDtLocal(fh) + '" max="' + pdcDtLocal(new Date()) + '"></div>' : '') +
+      '<input type="datetime-local" class="form-control pdc-dt" id="pdc-dt-' + id + '" value="' + pdcDtLocal(fh) + '" max="' + pdcDtLocal(new Date()) + '"></div>' : '') +
     '<div class="wiz-valores' + (t.multiple ? ' multi' : '') + '">' + vals.map(function (v) {
-      const sel = wiz.sel.indexOf(v.valorId) !== -1;
+      const sel = f.sel.indexOf(v.valorId) !== -1;
       return '<button type="button" class="wiz-valor' + (v.esSinNovedad ? ' sinnov' : '') + (sel ? ' sel' : '') + '" data-valor="' + escaparHtml(v.valorId) + '">' +
         (t.multiple ? '<span class="wv-check">' + (sel ? '✓' : '') + '</span>' : '') +
         '<span class="wv-txt">' + escaparHtml(v.valor) + '</span>' +
         (v.esSinNovedad ? '' : '<span class="wv-meta">' + pdcImpactoHtml(v.impacto) + (v.obsObligatoria ? ' ✎' : '') + '</span>') + '</button>';
     }).join('') + '</div>' +
     (t.multiple ? '<div class="wiz-nota">Podés marcar varios. "' + escaparHtml((vals.find(function (v) { return v.esSinNovedad; }) || {}).valor || 'Sin novedad') + '" desmarca los demás.</div>' : '') +
-    '<label class="wiz-obs-lbl" for="wiz-obs">Observación ' + (obsReq ? '<span class="req">* obligatoria</span>' : '(opcional)') + '</label>' +
-    '<textarea class="form-control' + (obsReq && !wiz.obs.trim() ? ' req-vacio' : '') + '" id="wiz-obs" rows="2" maxlength="2000" placeholder="Qué pasó, dónde, quién…">' + escaparHtml(wiz.obs) + '</textarea>' +
-    '</div>' +
-    '<div class="wiz-pie">' +
-    (wiz.uno ? '<button type="button" data-w="cerrar">Cancelar</button>' : '<button type="button" data-w="saltar">' + (quedan ? 'Saltar' : 'Terminar') + '</button>') +
-    '<button type="button" class="pri" data-w="registrar"' + (wizPuedeRegistrar() ? '' : ' disabled') + '>Registrar' + (wiz.sel.length > 1 ? ' (' + wiz.sel.length + ')' : '') + '</button></div>';
+    '<label class="wiz-obs-lbl" for="pdc-obs-' + id + '">Observación ' + (obsReq ? '<span class="req">* obligatoria</span>' : '(opcional)') + '</label>' +
+    '<textarea class="form-control pdc-obs' + (obsReq && !f.obs.trim() ? ' req-vacio' : '') + '" id="pdc-obs-' + id + '" rows="2" maxlength="2000" placeholder="Qué pasó, dónde, quién…">' + escaparHtml(f.obs) + '</textarea>' +
+    '<div class="pdc-form-pie">' +
+    (enSecuencia ? '<button type="button" data-w="saltar">' + (pdcSiguientePendiente(t.tipoId) ? 'Saltar' : 'Terminar') + '</button>'
+                 : '<button type="button" data-w="cerrar">Cerrar</button>') +
+    '<button type="button" class="pri" data-w="registrar"' + (pdcFormPuede(f) ? '' : ' disabled') + '>Registrar' + (f.sel.length > 1 ? ' (' + f.sel.length + ')' : '') + '</button></div></div>';
 }
 
-function wizSiguiente() {
-  wiz.i++; wiz.sel = []; wiz.obs = '';
-  if (wiz.uno || wiz.i >= wiz.tipos.length) { pdcCerrarWizard(); return; }
-  renderWiz();
-  const c = document.querySelector('#wiz-caja .wiz-cuerpo');
-  if (c) c.scrollTop = 0;
+function pdcToggleTipo(tipoId) {
+  if (pdc.abiertos[tipoId]) { pdcCerrarTipo(tipoId); return; }
+  pdc.abiertos[tipoId] = true;
+  if (pdc.secuencia && pdc.secuencia !== tipoId) pdc.secuencia = '';   // abrir otro a mano corta la recorrida
+  renderPdc();
+}
+function pdcCerrarTipo(tipoId) {
+  delete pdc.abiertos[tipoId]; delete pdc.forms[tipoId];
+  if (pdc.secuencia === tipoId) pdc.secuencia = '';
+  renderPdc();
 }
 
-function wizRegistrar() {
-  if (!wizPuedeRegistrar()) return;
-  const t = pdcTipo(wiz.tipos[wiz.i]);
-  const fh = wizFechaHora();
+function pdcFormElegir(tipoId, valorId) {
+  const t = pdcTipo(tipoId), val = pdcValor(valorId), f = pdcForm(tipoId);
+  if (!t || !val) return;
+  if (t.multiple) {
+    const i = f.sel.indexOf(val.valorId);
+    if (i !== -1) f.sel.splice(i, 1);
+    else if (val.esSinNovedad) f.sel = [val.valorId];
+    else {
+      f.sel = f.sel.filter(function (id) { const x = pdcValor(id); return x && !x.esSinNovedad; });
+      f.sel.push(val.valorId);
+    }
+    renderPdc();
+  } else {
+    f.sel = [val.valorId];
+    if (val.obsObligatoria && !f.obs.trim()) {   // pide la observación antes de registrar
+      renderPdc();
+      const o = document.getElementById('pdc-obs-' + tipoId);
+      if (o) o.focus();
+    } else pdcFormRegistrar(tipoId);
+  }
+}
+
+function pdcFormRegistrar(tipoId) {
+  const t = pdcTipo(tipoId), f = pdcForm(tipoId);
+  if (!t || !pdcFormPuede(f)) return;
+  const fh = pdcFormFechaHora(f);
   if (fh.getTime() > Date.now() + 60000) { mostrarAviso('La hora del evento no puede ser futura.'); return; }
   const fecha = pdcDayKey(fh);
-  const grupo = wiz.sel.length > 1 ? uuid() : '';
-  const ops = wiz.sel.map(function (valorId) {
+  const grupo = f.sel.length > 1 ? uuid() : '';
+  const ops = f.sel.map(function (valorId) {
     return { op: 'add', rec: { id: uuid(), fecha: fecha, fechaHora: pdcIsoLocal(fh), tipoId: t.tipoId, valorId: valorId,
-      observacion: wiz.obs.trim(), origen: 'wizard', grupoId: grupo } };
+      observacion: f.obs.trim(), origen: 'wizard', grupoId: grupo } };
   });
+  const txt = '✓ ' + t.tipo + ': ' + f.sel.map(function (id) { return pdcValor(id).valor; }).join(', ') + ' · ' + pdcHora(pdcIsoLocal(fh));
+  delete pdc.forms[tipoId];
+  const enSecuencia = pdc.secuencia === tipoId;
+  const sig = enSecuencia ? pdcSiguientePendiente(tipoId) : '';   // antes de registrar: el actual todavía cuenta como pendiente
+  if (enSecuencia) { pdc.abiertos = {}; if (sig) { pdc.abiertos[sig] = true; pdc.secuencia = sig; } else pdc.secuencia = ''; }
+  else if (!t.multiple) delete pdc.abiertos[tipoId];   // múltiple: queda abierto, listo para otro evento
   if (navigator.vibrate) navigator.vibrate(40);
-  pdcHacerOps(ops, PDC_FLUSH_MS);
-  pdcToast('✓ ' + t.tipo + ': ' + wiz.sel.map(function (id) { return pdcValor(id).valor; }).join(', ') + ' · ' + pdcHora(pdcIsoLocal(fh)),
-    ops.map(function (o) { return o.rec.id; }));
-  wizSiguiente();
+  pdcHacerOps(ops, PDC_FLUSH_MS);   // re-renderiza
+  pdcToast(txt, ops.map(function (o) { return o.rec.id; }));
+  if (sig) pdcScrollATipo(sig);
 }
 
-document.getElementById('pdc-wiz').addEventListener('click', function (e) {
-  const v = e.target.closest('[data-valor]');
-  if (v) {
-    const t = pdcTipo(wiz.tipos[wiz.i]), val = pdcValor(v.dataset.valor);
-    if (!t || !val) return;
-    if (t.multiple) {
-      const i = wiz.sel.indexOf(val.valorId);
-      if (i !== -1) wiz.sel.splice(i, 1);
-      else if (val.esSinNovedad) wiz.sel = [val.valorId];
-      else {
-        wiz.sel = wiz.sel.filter(function (id) { const x = pdcValor(id); return x && !x.esSinNovedad; });
-        wiz.sel.push(val.valorId);
-      }
-      renderWiz();
-    } else {
-      wiz.sel = [val.valorId];
-      if (val.obsObligatoria && !wiz.obs.trim()) {   // pide la observación antes de registrar
-        renderWiz();
-        const o = document.getElementById('wiz-obs');
-        if (o) o.focus();
-      } else wizRegistrar();
-    }
-    return;
+// ── "Completar parte": recorre los tipos pendientes en el orden de la lista ──
+function pdcCompletarParte() {
+  const st = pdcEstadoDia(pdcDiaSel());
+  if (!st.faltan.length) return;
+  pdcSecuenciaAbrir(st.faltan[0].tipoId);
+}
+function pdcSecuenciaAbrir(tipoId) {
+  pdc.abiertos = {}; pdc.abiertos[tipoId] = true; pdc.secuencia = tipoId;
+  renderPdc();
+  pdcScrollATipo(tipoId);
+}
+/** Próximo tipo pendiente DESPUÉS de tipoId (sin volver al principio: lo saltado queda saltado). */
+function pdcSiguientePendiente(tipoId) {
+  const st = pdcEstadoDia(pdcDiaSel());
+  const ids = st.tipos.map(function (t) { return t.tipoId; });
+  const falta = {};
+  st.faltan.forEach(function (t) { falta[t.tipoId] = true; });
+  for (let k = ids.indexOf(tipoId) + 1; k < ids.length; k++) if (falta[ids[k]]) return ids[k];
+  return '';
+}
+function pdcSecuenciaSiguiente(tipoId) {
+  const sig = pdcSiguientePendiente(tipoId);
+  delete pdc.forms[tipoId];
+  if (sig) { pdcSecuenciaAbrir(sig); return; }
+  pdc.secuencia = ''; pdc.abiertos = {};
+  renderPdc();
+}
+function pdcScrollATipo(tipoId) {
+  requestAnimationFrame(function () {
+    const el = document.querySelector('#pdc-lista .pdc-tipo[data-tipo="' + tipoId + '"]');
+    if (!el) return;
+    if (estado.modoCel) {   // bajo la franja fija
+      const fija = document.getElementById('pdc-fija').getBoundingClientRect().bottom;
+      window.scrollTo({ top: Math.max(0, window.scrollY + el.getBoundingClientRect().top - fija - 8), behavior: 'smooth' });
+    } else el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  });
+}
+
+// ── v7.0.1 — Franja fija: alto de las columnas (computadora) y franja compacta al bajar (celular) ──
+function pdcAjustarAlto() {
+  const hdr = document.getElementById('app-header');
+  if (hdr && hdr.offsetHeight) document.documentElement.style.setProperty('--hdr-alto', hdr.offsetHeight + 'px');
+  const escritorio = !estado.modoCel && estado.seccion === 'pdc';
+  document.body.classList.toggle('pdc-escritorio', escritorio);
+  const c = document.getElementById('pdc-cuerpo');
+  if (!escritorio) c.style.removeProperty('--pdc-cuerpo-h');
+  else {
+    const top = c.getBoundingClientRect().top + window.scrollY;
+    c.style.setProperty('--pdc-cuerpo-h', Math.max(280, Math.floor(window.innerHeight - top - 16)) + 'px');
   }
-  const h = e.target.closest('[data-hace]');
-  if (h) { const m = Number(h.dataset.hace); wiz.hora = m ? new Date(Date.now() - m * 60000) : null; renderWiz(); return; }
-  const b = e.target.closest('[data-w]');
-  if (!b) { if (e.target.id === 'pdc-wiz') pdcCerrarWizard(); return; }
-  const a = b.dataset.w;
-  if (a === 'cerrar') pdcCerrarWizard();
-  else if (a === 'saltar') wizSiguiente();
-  else if (a === 'registrar') wizRegistrar();
-  else if (a === 'hora') { wiz.panelHora = !wiz.panelHora; renderWiz(); }
-});
-document.getElementById('pdc-wiz').addEventListener('input', function (e) {
-  if (e.target.id !== 'wiz-obs') return;
-  wiz.obs = e.target.value;
-  e.target.classList.toggle('req-vacio', wizObsObligatoria() && !wiz.obs.trim());
-  const btn = document.querySelector('#wiz-caja [data-w="registrar"]');
-  if (btn) btn.disabled = !wizPuedeRegistrar();
-});
-document.getElementById('pdc-wiz').addEventListener('change', function (e) {
-  if (e.target.id !== 'wiz-dt' || !e.target.value) return;
-  const d = new Date(e.target.value);
-  if (isNaN(d)) return;
-  if (d.getTime() > Date.now() + 60000) { mostrarAviso('La hora del evento no puede ser futura.'); renderWiz(); return; }
-  wiz.hora = d;
-  renderWiz();
-});
+  pdcCompactar();
+}
+function pdcCompactar() {
+  const b = document.body, raiz = document.documentElement;
+  if (!(estado.modoCel && estado.seccion === 'pdc')) { b.classList.remove('pdc-compacta'); raiz.style.scrollPaddingTop = ''; return; }
+  const y = window.scrollY, on = b.classList.contains('pdc-compacta');
+  if (!on && y > 60) b.classList.add('pdc-compacta');
+  else if (on && y < 8) b.classList.remove('pdc-compacta');   // histéresis: no titila
+  // Lo que el navegador lleva a la vista (foco en la observación con el teclado abierto) queda debajo de la franja
+  const hdr = document.getElementById('app-header'), fija = document.getElementById('pdc-fija');
+  raiz.style.scrollPaddingTop = ((hdr ? hdr.offsetHeight : 0) + (fija ? fija.offsetHeight : 0) + 8) + 'px';
+}
+window.addEventListener('scroll', pdcCompactar, { passive: true });
+window.addEventListener('resize', function () { if (estado.seccion === 'pdc') pdcAjustarAlto(); });
 
 // ── Toast con Deshacer (RegMed) ──
 let pdcToastIds = null, pdcToastTimer = null;
@@ -5381,7 +5554,6 @@ function pdcOcultarToast() { document.getElementById('pdc-toast').classList.remo
 document.getElementById('pdc-toast-undo').addEventListener('click', function () {
   if (pdcToastIds) pdcDeshacer(pdcToastIds);
   pdcOcultarToast();
-  if (document.getElementById('pdc-wiz').classList.contains('open')) renderWiz();
 });
 
 // ── Entrada a la sección + timers ──
