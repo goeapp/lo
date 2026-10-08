@@ -3,8 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra v7.0.3</title>
+<title>LibroObra v7.0.4</title>
 <!--
+  index_libroobra_v7_0_4.html — LibroObra v7.0.4 (08-oct-2026)
+  Backend: gas_libroobra_v7_0_4.gs (calendario + cuadrados; publicar como
+  Nueva versión). sw.js: sw_libroobra_v7_0_4.js.
+
+  QUÉ CAMBIÓ EN v7.0.4 (respecto a v7.0.3):
+   - Celular: la franja fija del PdC ya no salta ni titila. Al achicarse,
+     lo que pierde de alto se suma arriba de la lista (el lugar en la
+     página no cambia), con un fundido de 0,2 s y sin anclaje de scroll.
+   - Computadora:
+     · Todo el ancho de la pantalla en el PdC (antes, 1280 px).
+     · Franja en un renglón (unos 56 px); ▾ la despliega completa y ▴
+       la vuelve a un renglón. Queda recordado en el dispositivo.
+     · Vista Mes ([ Hoy | Semana | Mes ]): grilla lunes a domingo con
+       hasta 3 eventos con novedad por día ("[Tipo] Valor", color por
+       impacto efectivo) y "+n más"; "faltan n" en los días incompletos;
+       chips de filtro por tipo (uno a la vez); clic en un día → mismo
+       panel de detalle que Semana, con Ajustar; ◀ · Mes actual · ▶.
+     · Calendario de la obra (si PDC_CALENDARIO_ACTIVO = Sí y hay ID):
+       "Abrir en Google Calendar" y "Sincronizar ahora" (pdcCalSync).
+   - PDF de Hitos en JPEG (antes PNG sin comprimir: pesaba de más).
+
+  (historia anterior)
   index_libroobra_v7_0_3.html — LibroObra v7.0.3 (08-oct-2026)
   Backend: gas_libroobra_v7_0_3.gs (avisos del PdC; publicar como Nueva
   versión: la API_URL no cambia). sw.js: sw_libroobra_v7_0_3.js.
@@ -1128,7 +1150,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 .pdc-lt { display: grid; grid-template-columns: 48px 1fr auto; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px dashed var(--border); }
 .pdc-lt:last-child { border-bottom: none; }
 .pdc-lt-tipo { font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
-body:not(.modo-cel) .pdc-wrap { max-width: 1280px; }
+body:not(.modo-cel) .pdc-wrap { max-width: none; }   /* v7.0.4 — todo el ancho (antes 1280 px) */
 body:not(.modo-cel) .pdc-fija { display: grid; grid-template-columns: 1fr minmax(340px, 460px); grid-template-areas: "cab acc" "aviso aviso"; gap: 12px; }
 body:not(.modo-cel) .pdc-fija .pdc-cab { grid-area: cab; }
 body:not(.modo-cel) .pdc-fija .pdc-acciones { grid-area: acc; }
@@ -1210,6 +1232,64 @@ body:not(.modo-cel) .pdc-pie { padding-top: 10px; }
 body.pdc-escritorio #main-content { padding-bottom: 16px; }
 body.modo-cel .pdc-cuerpo { min-height: calc(100vh - var(--hdr-alto, 88px)); }   /* margen para que la franja compacta no titile */
 
+/* v7.0.4 — franja del celular: fundido suave al achicarse / expandirse; sin anclaje de scroll */
+@keyframes pdcFijaIn { from { opacity: .35; } to { opacity: 1; } }
+body.modo-cel .pdc-fija.pdc-fija-anim > * { animation: pdcFijaIn .22s ease; }
+body.modo-cel { overflow-anchor: none; }
+
+/* v7.0.4 — computadora: franja en un renglón (▾ la despliega completa) */
+.pdc-franja-tg { display: none; }
+body:not(.modo-cel) .pdc-fija { position: relative; }
+body:not(.modo-cel) .pdc-franja-tg { display: inline-flex; align-items: center; justify-content: center; position: absolute; top: 10px; right: 10px; z-index: 2;
+  width: 32px; height: 32px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--accent2); font-size: .95rem; line-height: 1; }
+body:not(.modo-cel) .pdc-franja-tg:hover { border-color: var(--accent2); }
+body:not(.modo-cel) #sec-pdc.franja-1r .pdc-fija { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 10px 8px 14px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+body:not(.modo-cel) #sec-pdc.franja-1r .pdc-cab { flex: 1 1 560px; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 0; border: none; box-shadow: none; background: none; }
+body:not(.modo-cel) #sec-pdc.franja-1r .pdc-cab-fila { display: contents; }
+body:not(.modo-cel) #sec-pdc.franja-1r .pdc-cab-tit { order: 1; display: flex; align-items: baseline; gap: 10px; white-space: nowrap; }
+body:not(.modo-cel) #sec-pdc.franja-1r .pdc-titulo { font-size: 1.1rem; }
+body:not(.modo-cel) #sec-pdc.franja-1r .pdc-dia { font-size: .9rem; }
+body:not(.modo-cel) #sec-pdc.franja-1r .pdc-prog { order: 2; flex: 1 1 140px; min-width: 120px; margin: 0; }
+body:not(.modo-cel) #sec-pdc.franja-1r .pdc-dias { order: 3; }
+body:not(.modo-cel) #sec-pdc.franja-1r .pdc-vistas { order: 4; margin: 0; }
+body:not(.modo-cel) #sec-pdc.franja-1r .pdc-pill { order: 5; }
+body:not(.modo-cel) #sec-pdc.franja-1r:not(.vista-semana):not(.vista-mes) #pdc-acciones,
+body:not(.modo-cel) #sec-pdc.franja-1r.vista-semana .pdc-sem-acc,
+body:not(.modo-cel) #sec-pdc.franja-1r.vista-mes .pdc-mes-acc:not(.sin-cal) { display: flex; flex: 0 0 auto; gap: 8px; }
+body:not(.modo-cel) #sec-pdc.franja-1r .pdc-btn-grande { padding: 8px 14px; font-size: .84rem; border-radius: var(--radius-sm); white-space: nowrap; }
+body:not(.modo-cel) #sec-pdc.franja-1r .pdc-aviso { flex: 1 1 100%; order: 10; }
+body:not(.modo-cel) #sec-pdc.franja-1r .pdc-franja-tg { position: static; flex: none; }
+
+/* v7.0.4 — vista Mes (computadora) */
+.pdc-mes-acc, .pdc-mes { display: none; }
+#sec-pdc.vista-mes #pdc-acciones, #sec-pdc.vista-mes #pdc-cuerpo, #sec-pdc.vista-mes .pdc-semana, #sec-pdc.vista-mes .pdc-sem-acc { display: none !important; }
+#sec-pdc.vista-mes .pdc-mes-acc:not(.sin-cal) { display: grid; grid-template-columns: 1fr 1fr; }
+body:not(.modo-cel) #sec-pdc.vista-mes .pdc-mes { display: grid; grid-template-columns: 1fr minmax(340px, 420px); gap: 16px; height: var(--pdc-cuerpo-h, auto); min-height: 280px; }
+a.pdc-btn-grande { display: flex; align-items: center; justify-content: center; text-decoration: none; }
+.pdc-mes-filtro { padding-top: 12px; margin-bottom: 2px; }
+.pdc-mes-tabla { width: 100%; border-collapse: separate; border-spacing: 4px; table-layout: fixed; }
+.pdc-mes-tabla thead th { position: sticky; top: 0; z-index: 2; background: var(--surface); font-size: .7rem; font-weight: 700; color: var(--muted); text-align: center; padding: 8px 0 4px; }
+.pdc-mes-tabla td { vertical-align: top; height: 1px; }
+.pdc-mdia { width: 100%; height: 100%; min-height: 92px; display: flex; flex-direction: column; align-items: stretch; gap: 3px; text-align: left; padding: 5px 6px;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
+.pdc-mdia:hover:not(:disabled) { border-color: var(--accent2); }
+.pdc-mdia.fuera { opacity: .45; }
+.pdc-mdia.futuro { background: #f8fafc; cursor: default; }
+.pdc-mdia.hoy { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.pdc-mdia.sel { box-shadow: 0 0 0 2px var(--accent2); }
+.pdc-mdia-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; }
+.pdc-mdia .num { font-weight: 700; font-size: .8rem; }
+.pdc-mdia.hoy .num { color: var(--accent); }
+.pdc-mdia .falta { font-size: .6rem; font-weight: 700; color: #b91c1c; white-space: nowrap; }
+.pdc-mev { display: block; font-size: .68rem; font-weight: 600; border-radius: 4px; padding: 1px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid; }
+.pdc-mev.i0 { background: #f1f5f9; color: #475569; border-color: #94a3b8; }
+.pdc-mev.i1 { background: #fef9c3; color: #854d0e; border-color: #eab308; }
+.pdc-mev.i2 { background: #ffedd5; color: #9a3412; border-color: #f97316; }
+.pdc-mev.i3 { background: #fee2e2; color: #991b1b; border-color: #dc2626; }
+.pdc-mdia .mas { font-size: .62rem; color: var(--muted); font-weight: 600; }
+.pdc-mes-sub { font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 12px 0 2px; }
+
 /* v7.0.3 — botones flotantes del PdC (celular): ✕ arriba, ✓ abajo (a mano del pulgar) */
 #pdc-fab { position: fixed; right: 16px; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 955; display: none; flex-direction: column; align-items: center; gap: 12px; transition: bottom .2s ease; }
 #pdc-fab.visible { display: flex; animation: fadeUp .18s ease; }
@@ -1266,7 +1346,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
   <div class="caja">
     <span class="caja-emoji">📋</span>
     <div class="caja-logo">LibroObra</div>
-    <div class="caja-version" id="version-login">v7.0.3</div>
+    <div class="caja-version" id="version-login">v7.0.4</div>
     <div class="caja-sub">Registro de comunicaciones de obra</div>
 
     <div id="paso-email" class="login-paso activo">
@@ -1334,7 +1414,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
     <button class="hdr-btn" id="btn-cambiar-obra" onclick="cambiarObra()">Cambiar obra</button>
     <button class="hdr-btn hdr-btn-instalar hidden" id="btn-instalar">Instalar</button>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version" id="version-app">v7.0.3</span>
+    <span class="hdr-version" id="version-app">v7.0.4</span>
     <button class="hdr-btn" onclick="confirmarCerrarSesion()">Salir</button>
   </header>
 
@@ -1532,12 +1612,12 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
         <div class="pdc-fija" id="pdc-fija">
         <div class="card pdc-cab">
           <div class="pdc-cab-fila">
-            <div>
+            <div class="pdc-cab-tit">
               <div class="pdc-titulo">Parte de Contrato</div>
               <div class="pdc-dia" id="pdc-dia-label">—</div>
             </div>
             <div class="pdc-vistas hidden" id="pdc-vistas" role="tablist">
-              <button type="button" data-vista="hoy" class="on">Hoy</button><button type="button" data-vista="semana">Semana</button>
+              <button type="button" data-vista="hoy" class="on">Hoy</button><button type="button" data-vista="semana">Semana</button><button type="button" data-vista="mes">Mes</button>
             </div>
             <span class="pdc-pill" id="pdc-pill">—</span>
           </div>
@@ -1553,6 +1633,12 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
           <button type="button" class="pdc-btn-grande pri" id="pdc-btn-informe" onclick="pdcInformeSemanal()">↓ Informe semanal</button>
           <button type="button" class="pdc-btn-grande sec" id="pdc-btn-xlsx" onclick="pdcEventosXlsx()" title="Listado de eventos de la semana a la vista">↓ XLSX</button>
         </div>
+        <!-- v7.0.4 — vista Mes: calendario de la obra -->
+        <div class="pdc-acciones pdc-mes-acc sin-cal" id="pdc-mes-acc">
+          <a class="pdc-btn-grande sec" id="pdc-btn-cal-abrir" href="#" target="_blank" rel="noopener" title="Abre el calendario de la obra en Google Calendar">Abrir en Google Calendar ↗</a>
+          <button type="button" class="pdc-btn-grande sec" id="pdc-btn-cal-sync" onclick="pdcCalSincronizar()" title="Pasa ya al calendario los eventos con novedad (si no, se hace a las 23 hs)">⟳ Sincronizar ahora</button>
+        </div>
+        <button type="button" class="pdc-franja-tg" id="pdc-franja-tg" title="Desplegar la franja" aria-label="Desplegar la franja">▾</button>
         </div>
         <div class="pdc-cuerpo" id="pdc-cuerpo">
           <div class="pdc-col pdc-col-tipos" id="pdc-col-tipos">
@@ -1571,6 +1657,11 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
             <div class="pdc-sem-pie" id="pdc-sem-pie"></div>
           </div>
           <div class="pdc-col pdc-sem-det" id="pdc-sem-det"></div>
+        </div>
+        <!-- v7.0.4 — vista Mes (solo computadora) -->
+        <div class="pdc-mes" id="pdc-mes">
+          <div class="pdc-col pdc-sem-izq pdc-mes-izq" id="pdc-mes-izq"></div>
+          <div class="pdc-col pdc-sem-det" id="pdc-mes-det"></div>
         </div>
       </div>
     </section>
@@ -1918,7 +2009,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
 // ══════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════
-const APP_VERSION = 'v7.0.3';
+const APP_VERSION = 'v7.0.4';
 const API_URL = 'https://script.google.com/macros/s/AKfycbxDN2F_K6z4wQXDJAyyZ6EdoSqoQgHv8d8f7gXGo-QYdke3DXW6hvZtEnmEy9xFpjTO/exec';
 const SESION_KEY = 'lo_sesion';
 const OBRA_KEY = 'lo_obra_actual';
@@ -2292,7 +2383,8 @@ const ACCIONES_SEGURAS_REINTENTO = new Set([
   'inicializarSesion', 'inicializarObraLiviana', 'inicializarObraPesada', 'validarSesion',
   'getHistorial', 'getHitosLog', 'recalcularDashboard', 'registrarComunicacion', 'guardarHito',
   'crearVinculo', 'bajaVinculo',  // v6.1.0 — idempotentes (IdVinculo generado acá / baja repetida = yaEstaba)
-  'pdcInicializar', 'pdcBatch'    // v7.0.0 — lectura / lote idempotente por ID
+  'pdcInicializar', 'pdcBatch',   // v7.0.0 — lectura / lote idempotente por ID
+  'pdcCalSync'                    // v7.0.4 — idempotente (firma por evento)
 ]);
 // Mismo alcance que ACCIONES_GET + PWAPIN_ACCIONES_GET del .gs. validarPIN va por POST (el PIN no viaja en la URL).
 const ACCIONES_GET = new Set([
@@ -2300,6 +2392,7 @@ const ACCIONES_GET = new Set([
   'getHistorial', 'getHitosLog', 'recalcularDashboard', 'bajaHito',
   'crearVinculo', 'bajaVinculo',   // v6.1.0
   'pdcInicializar',                // v7.0.0 (pdcBatch va por POST: el lote puede ser largo)
+  'pdcCalSync',                    // v7.0.4
   'solicitarPIN', 'validarSesion'
 ]);
 
@@ -2318,7 +2411,8 @@ const TIMEOUT_BACKEND = {
   inicializarSesion: 25000, validarSesion: 25000, solicitarPIN: 25000, validarPIN: 25000, inicializarObraLiviana: 25000,
   pdcInicializar: 30000, pdcBatch: 30000, pdcAjustar: 30000,
   inicializarObraPesada: 60000,
-  registrarComunicacion: 330000, indexarTexto: 330000, recalcularDashboard: 330000   // subida / lectura de PDF / cálculo
+  registrarComunicacion: 330000, indexarTexto: 330000, recalcularDashboard: 330000,   // subida / lectura de PDF / cálculo
+  pdcCalSync: 330000   // v7.0.4 — calendario
 };
 const TIMEOUT_BACKEND_DEF = 120000;
 async function llamarBackend(action, params, reintentando) {
@@ -5073,17 +5167,17 @@ async function exportarHitosPDF() {
   try {
     if (typeof html2canvas === 'undefined') await cargarScript(CDN.html2canvas);
     if (!window.jspdf) await cargarScript(CDN.jspdf);
-    const canvas = await html2canvas(container, { scale: 2, useCORS: true, logging: false });
-    const imgData = canvas.toDataURL('image/png');
+    const canvas = await html2canvas(container, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' });
+    const imgData = canvas.toDataURL('image/jpeg', 0.88);   // v7.0.4 — JPEG (el PNG sin comprimir pesaba de más)
     const pdf = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageW = pdf.internal.pageSize.getWidth(), pageH = pdf.internal.pageSize.getHeight(), margin = 10;
     const imgW = pageW - margin * 2, imgH = (canvas.height * imgW) / canvas.width;
     let heightLeft = imgH;
-    pdf.addImage(imgData, 'PNG', margin, margin, imgW, imgH);
+    pdf.addImage(imgData, 'JPEG', margin, margin, imgW, imgH, undefined, 'FAST');
     heightLeft -= pageH - margin * 2;
     while (heightLeft > 0) {
       pdf.addPage();
-      pdf.addImage(imgData, 'PNG', margin, heightLeft - imgH + margin, imgW, imgH);
+      pdf.addImage(imgData, 'JPEG', margin, heightLeft - imgH + margin, imgW, imgH, undefined, 'FAST');
       heightLeft -= pageH - margin * 2;
     }
     pdf.save(estado.obra.codigoObra + '_Hitos_' + ts + '.pdf');
@@ -5108,6 +5202,7 @@ const PDC_RETRY_MS = 30000;
 const PDC_PULL_MS = 120000;
 const PDC_IMPACTO_TXT = ['Sin impacto', 'Leve', 'Parcial', 'Día caído'];
 const DIAS_SEM = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const MESES_LARGOS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];   // v7.0.4
 const SECCIONES_CEL = ['pdc', 'buscar'];
 
 const pdc = {
@@ -5122,7 +5217,9 @@ const pdc = {
   semana: '',              // v7.0.2 — lunes de la semana a la vista ('' = la actual)
   celda: null,             // v7.0.2 — {tipoId, dia} elegida en la grilla
   ajustando: '', ajuste: null, guardandoAjuste: false,  // v7.0.2 — formulario de ajuste abierto (id del evento)
-  filtroLinea: ''          // v7.0.2 r1 — línea de tiempo: '' = todos, o un tipoId
+  filtroLinea: '',         // v7.0.2 r1 — línea de tiempo: '' = todos, o un tipoId
+  mes: '', mesDia: '', filtroMes: '',   // v7.0.4 — vista Mes: 1º del mes a la vista ('' = el actual), día elegido, filtro por tipo
+  franjaAbierta: (function () { try { return localStorage.getItem('lo_pdc_franja') === 'abierta'; } catch (e) { return false; } })()   // v7.0.4
 };
 
 // ── Dispositivo (localStorage, por obra) ──
@@ -5154,7 +5251,8 @@ function pdcAbrirObra(obraId) {
     obraId: obraId, cat: pdcCatGuardado(obraId), recs: pdcLsGet(pdcK('recs', obraId), {}),
     queue: pdcLsGet(pdcK('queue', obraId), []), lastSync: pdcLsGet(pdcK('last', obraId), null),
     flushing: false, inflight: 0, syncErr: '', dia: '', desde: '', sinPdC: false, mensaje: '',
-    cargando: false, ultimoPull: 0, abiertos: {}, forms: {}, secuencia: '', semana: '', celda: null, ajustando: '', ajuste: null
+    cargando: false, ultimoPull: 0, abiertos: {}, forms: {}, secuencia: '', semana: '', celda: null, ajustando: '', ajuste: null,
+    mes: '', mesDia: '', filtroMes: ''   // v7.0.4
   });
 }
 
@@ -5357,6 +5455,12 @@ function pdcRespHtml(r) { return r && r !== '—' ? '<span class="pdc-resp r-' +
 function renderPdc() {
   pdcPintarSync();
   if (estado.seccion !== 'pdc') return;
+  // v7.0.4 — computadora: franja en un renglón salvo que se haya desplegado (▾)
+  document.getElementById('sec-pdc').classList.toggle('franja-1r', !estado.modoCel && !pdc.franjaAbierta);
+  const tg = document.getElementById('pdc-franja-tg');
+  tg.textContent = pdc.franjaAbierta ? '▴' : '▾';
+  tg.title = pdc.franjaAbierta ? 'Volver a un renglón' : 'Desplegar la franja';
+  tg.setAttribute('aria-label', tg.title);
   const dia = pdcDiaSel(), hoy = hoyISO();
   const aviso = document.getElementById('pdc-aviso');
   const acciones = document.getElementById('pdc-acciones');
@@ -5374,7 +5478,7 @@ function renderPdc() {
   aviso.className = 'pdc-aviso' + (avisoCls ? ' ' + avisoCls : '') + (avisoTxt ? '' : ' hidden');
   aviso.textContent = avisoTxt;
   if (!pdc.cat) {
-    document.getElementById('sec-pdc').classList.remove('vista-semana');
+    document.getElementById('sec-pdc').classList.remove('vista-semana', 'vista-mes');
     document.getElementById('pdc-vistas').classList.add('hidden');
     acciones.classList.add('hidden');
     document.getElementById('pdc-barra').classList.add('hidden');
@@ -5388,13 +5492,15 @@ function renderPdc() {
     return;
   }
   document.getElementById('pdc-cuerpo').classList.remove('sin-cat');
-  // v7.0.2 — selector Hoy | Semana (solo computadora)
-  const enSemana = pdcEnSemana();
-  document.getElementById('sec-pdc').classList.toggle('vista-semana', enSemana);
+  // v7.0.2 — selector Hoy | Semana · v7.0.4 — + Mes (solo computadora)
+  const vistaAct = pdcEnSemana() ? 'semana' : pdcEnMes() ? 'mes' : 'hoy';
+  document.getElementById('sec-pdc').classList.toggle('vista-semana', vistaAct === 'semana');
+  document.getElementById('sec-pdc').classList.toggle('vista-mes', vistaAct === 'mes');
   const vistas = document.getElementById('pdc-vistas');
   vistas.classList.toggle('hidden', estado.modoCel);
-  vistas.querySelectorAll('[data-vista]').forEach(function (b) { b.classList.toggle('on', b.dataset.vista === (enSemana ? 'semana' : 'hoy')); });
-  if (enSemana) { const f = pdcCapturarFoco(); renderSemana(); pdcRestaurarFoco(f); pdcAjustarAlto(); return; }
+  vistas.querySelectorAll('[data-vista]').forEach(function (b) { b.classList.toggle('on', b.dataset.vista === vistaAct); });
+  if (vistaAct === 'semana') { const f = pdcCapturarFoco(); renderSemana(); pdcRestaurarFoco(f); pdcAjustarAlto(); return; }
+  if (vistaAct === 'mes') { const f = pdcCapturarFoco(); renderMes(); pdcRestaurarFoco(f); pdcAjustarAlto(); return; }
   const st = pdcEstadoDia(dia);
   const total = st.tipos.length, hechos = st.hechos;
   const barra = document.getElementById('pdc-barra');
@@ -5773,8 +5879,8 @@ function pdcAjustarAlto() {
   if (hdr && hdr.offsetHeight) document.documentElement.style.setProperty('--hdr-alto', hdr.offsetHeight + 'px');
   const escritorio = !estado.modoCel && estado.seccion === 'pdc';
   document.body.classList.toggle('pdc-escritorio', escritorio);
-  const c = document.getElementById(pdcEnSemana() ? 'pdc-semana' : 'pdc-cuerpo');   // v7.0.2
-  ['pdc-cuerpo', 'pdc-semana'].forEach(function (id) { if (id !== c.id) document.getElementById(id).style.removeProperty('--pdc-cuerpo-h'); });
+  const c = document.getElementById(pdcEnSemana() ? 'pdc-semana' : pdcEnMes() ? 'pdc-mes' : 'pdc-cuerpo');   // v7.0.2 · v7.0.4 Mes
+  ['pdc-cuerpo', 'pdc-semana', 'pdc-mes'].forEach(function (id) { if (id !== c.id) document.getElementById(id).style.removeProperty('--pdc-cuerpo-h'); });
   if (!escritorio) c.style.removeProperty('--pdc-cuerpo-h');
   else {
     const top = c.getBoundingClientRect().top + window.scrollY;
@@ -5784,12 +5890,26 @@ function pdcAjustarAlto() {
 }
 function pdcCompactar() {
   const b = document.body, raiz = document.documentElement;
-  if (!(estado.modoCel && estado.seccion === 'pdc')) { b.classList.remove('pdc-compacta'); raiz.style.scrollPaddingTop = ''; return; }
+  const cuerpo = document.getElementById('pdc-cuerpo');
+  if (!(estado.modoCel && estado.seccion === 'pdc')) { b.classList.remove('pdc-compacta'); cuerpo.style.marginTop = ''; raiz.style.scrollPaddingTop = ''; return; }
   const y = window.scrollY, on = b.classList.contains('pdc-compacta');
-  if (!on && y > 60) b.classList.add('pdc-compacta');
-  else if (on && y < 8) b.classList.remove('pdc-compacta');   // histéresis: no titila
+  const fija = document.getElementById('pdc-fija');
+  let pasa = null;
+  if (!on && y > 60) pasa = true;
+  else if (on && y < 8) pasa = false;   // histéresis
+  if (pasa !== null) {
+    // v7.0.4 — el lugar en la página no cambia: lo que la franja pierde de alto se suma arriba de la lista.
+    // Así nada se corre, el scroll no vuelve a cruzar el límite y no titila.
+    const h0 = fija.offsetHeight;
+    b.classList.toggle('pdc-compacta', pasa);
+    const h1 = fija.offsetHeight;
+    cuerpo.style.marginTop = pasa ? Math.max(0, h0 - h1) + 'px' : '';
+    fija.classList.remove('pdc-fija-anim');
+    void fija.offsetWidth;   // reinicia la animación
+    fija.classList.add('pdc-fija-anim');
+  }
   // Lo que el navegador lleva a la vista (foco en la observación con el teclado abierto) queda debajo de la franja
-  const hdr = document.getElementById('app-header'), fija = document.getElementById('pdc-fija');
+  const hdr = document.getElementById('app-header');
   raiz.style.scrollPaddingTop = ((hdr ? hdr.offsetHeight : 0) + (fija ? fija.offsetHeight : 0) + 8) + 'px';
 }
 window.addEventListener('scroll', pdcCompactar, { passive: true });
@@ -5801,6 +5921,9 @@ window.addEventListener('resize', function () { if (estado.seccion === 'pdc') pd
 const PDC_RESPS = ['Cliente', 'Neutral', 'Propio'];
 const PDC_RESP_ORDEN = { Cliente: 0, Neutral: 1, Propio: 2 };
 function pdcEnSemana() { return !estado.modoCel && pdc.vista === 'semana' && !!pdc.cat; }
+function pdcEnMes() { return !estado.modoCel && pdc.vista === 'mes' && !!pdc.cat; }   // v7.0.4
+function pdcMesSel() { return pdc.mes || hoyISO().slice(0, 8) + '01'; }
+function pdcMesSumar(primero, n) { const d = _parseISO(primero); return pdcDayKey(new Date(d.getFullYear(), d.getMonth() + n, 1)); }
 function pdcLunes(iso) {
   const d = _parseISO(iso);
   d.setDate(d.getDate() - (d.getDay() + 6) % 7);
@@ -5813,7 +5936,7 @@ function pdcDesdeVista() {
   if (!pdc.cat) return '';
   const def = pdcSumarDias(hoyISO(), -(pdc.cat.config.PDC_DIAS_ATRAS || 7));
   let m = '';
-  [pdc.dia, pdc.vista === 'semana' ? pdcSemanaSel() : ''].forEach(function (d) { if (d && d < def && (!m || d < m)) m = d; });
+  [pdc.dia, pdc.vista === 'semana' ? pdcSemanaSel() : '', pdc.vista === 'mes' ? pdcLunes(pdcMesSel()) : ''].forEach(function (d) { if (d && d < def && (!m || d < m)) m = d; });
   return m;
 }
 function pdcImpEf(e) { const n = Number(e.impacto); return e.impacto === '' || isNaN(n) ? 0 : n; }
@@ -5949,11 +6072,18 @@ function renderSemanaDetalle(S) {
     h += '<div class="pdc-sem-vacio">' + (c.estado === 'falta' ? 'Sin eventos cargados.<br><br><button type="button" class="btn btn-secondary btn-sm" data-cargar-hoy="1">Cargar en Hoy</button>'
       : 'Día anterior al inicio del parte (PDC_FECHA_INICIO).') + '</div>';
   }
-  c.evs.forEach(function (e) {
+  c.evs.forEach(function (e) { h += pdcEvDetHtml(e, pend, false); });
+  cont.innerHTML = h + '</div>';
+}
+
+/** v7.0.4 — un evento del panel de detalle (Semana y Mes): propuesto, ajustado y Ajustar. */
+function pdcEvDetHtml(e, pend, conTipo) {
     const prop = e.impactoProp !== undefined && e.impactoProp !== '' ? e.impactoProp : e.impacto;
     const rProp = e.respProp !== undefined && e.respProp !== '' ? e.respProp : e.responsable;
-    h += '<div class="pdc-aj"><div class="pdc-aj-fila"><span class="pdc-ev-hora">' + escaparHtml(pdcHora(e.fechaHora)) + '</span>' +
-      '<div style="flex:1;min-width:0"><div><b>' + escaparHtml(pdcNombreValor(e)) + '</b> ' + pdcImpactoHtml(pdcImpEf(e)) + pdcRespHtml(e.responsable) +
+    const t = conTipo ? pdcTipo(e.tipoId) : null;
+    return '<div class="pdc-aj"><div class="pdc-aj-fila"><span class="pdc-ev-hora">' + escaparHtml(pdcHora(e.fechaHora)) + '</span>' +
+      '<div style="flex:1;min-width:0">' + (conTipo ? '<div class="pdc-lt-tipo">' + escaparHtml(t ? t.tipo : e.tipoId) + '</div>' : '') +
+      '<div><b>' + escaparHtml(pdcNombreValor(e)) + '</b> ' + pdcImpactoHtml(pdcImpEf(e)) + pdcRespHtml(e.responsable) +
       (pend[e.id] ? ' <span title="Guardado en el dispositivo, sin enviar">⏳</span>' : '') + '</div>' +
       (e.observacion ? '<div class="pdc-ev-obs">' + escaparHtml(e.observacion) + '</div>' : '') +
       '<div class="pdc-aj-prop">Propuesto: impacto ' + escaparHtml(String(prop)) + ' · ' + escaparHtml(rProp || '—') + '</div>' +
@@ -5964,8 +6094,6 @@ function renderSemanaDetalle(S) {
       (pdc.ajustando === e.id ? '' : '<button type="button" class="btn btn-secondary btn-sm" data-ajustar="' + escaparHtml(e.id) + '"' +
         (pend[e.id] || estado.offline ? ' disabled title="' + (estado.offline ? 'Sin conexión' : 'Se puede ajustar cuando se envíe') + '"' : '') + '>Ajustar</button>') +
       '</div>' + (pdc.ajustando === e.id ? pdcAjusteFormHtml(e) : '') + '</div>';
-  });
-  cont.innerHTML = h + '</div>';
 }
 
 function pdcAjusteFormHtml(e) {
@@ -6015,15 +6143,22 @@ async function pdcGuardarAjuste() {
 
 /** Clicks propios de la vista Semana. Devuelve true si los atendió. */
 function pdcSemanaClick(e) {
+  if (e.target.closest('#pdc-franja-tg')) {   // v7.0.4 — ▾ / ▴
+    pdc.franjaAbierta = !pdc.franjaAbierta;
+    try { localStorage.setItem('lo_pdc_franja', pdc.franjaAbierta ? 'abierta' : 'renglon'); } catch (x) { /* no es crítico */ }
+    renderPdc();
+    return true;
+  }
   const v = e.target.closest('[data-vista]');
   if (v) {
     if (pdc.vista === v.dataset.vista) return true;
     pdc.vista = v.dataset.vista;
     pdc.ajustando = ''; pdc.ajuste = null;
     renderPdc();
-    if (pdc.vista === 'semana' && pdcDesdeVista() && !estado.offline) pdcTraer();
+    if (pdc.vista !== 'hoy' && pdcDesdeVista() && (!pdc.desde || pdcDesdeVista() < pdc.desde) && !estado.offline) pdcTraer();
     return true;
   }
+  if (pdcMesClick(e)) return true;   // v7.0.4
   const sm = e.target.closest('[data-sem]');
   if (sm) {
     const n = Number(sm.dataset.sem), lunesHoy = pdcLunes(hoyISO());
@@ -6063,6 +6198,163 @@ function pdcSemanaClick(e) {
     return true;
   }
   return false;
+}
+
+// ══════════════════════════════════════════════
+// v7.0.4 — VISTA MES (computadora) + CALENDARIO DE LA OBRA
+// ══════════════════════════════════════════════
+/** Con novedad (lo mismo que va al calendario): el valor no es "sin novedad", o el impacto efectivo es mayor que 0. */
+function pdcEsNovedad(e) { const v = pdcValor(e.valorId); return !(v && v.esSinNovedad) || pdcImpEf(e) > 0; }
+function pdcEtiquetaEv(e) { const t = pdcTipo(e.tipoId); return '[' + (t ? t.tipo : e.tipoId) + '] ' + pdcNombreValor(e); }
+function pdcConCalendario() { const c = pdc.cat && pdc.cat.config; return !!(c && c.PDC_CALENDARIO_ACTIVO && c.PDC_CALENDARIO_ID); }
+
+/** Grilla del mes (lunes a domingo, semanas completas), eventos por día, faltantes y cantidades por tipo. */
+function pdcDatosMes(primero) {
+  const hoy = hoyISO(), ini = pdc.cat.config.PDC_FECHA_INICIO || '';
+  const d1 = _parseISO(primero);
+  const ultimo = pdcDayKey(new Date(d1.getFullYear(), d1.getMonth() + 1, 0));
+  const dias = [];
+  let d = pdcLunes(primero);
+  while (d <= ultimo || dias.length % 7) { dias.push(d); d = pdcSumarDias(d, 1); }
+  const desdeG = dias[0], hastaG = dias[dias.length - 1];
+  const tipos = pdcTiposActivos();
+  const porDia = {};
+  Object.keys(pdc.recs).forEach(function (id) {
+    const e = pdc.recs[id];
+    if (e.estado === 'borrado' || !e.fecha || e.fecha < desdeG || e.fecha > hastaG) return;
+    (porDia[e.fecha] = porDia[e.fecha] || []).push(e);
+  });
+  const info = {}, cuentaTipo = {};
+  let totalNov = 0, exigibles = 0, cargadas = 0;
+  dias.forEach(function (dd) {
+    const evs = (porDia[dd] || []).sort(function (a, b) { return a.fechaHora < b.fechaHora ? -1 : a.fechaHora > b.fechaHora ? 1 : 0; });
+    const enMes = dd >= primero && dd <= ultimo;
+    const exig = enMes && dd <= hoy && (!ini || dd >= ini);
+    let faltan = 0;
+    if (exig) {
+      const con = {};
+      evs.forEach(function (e) { con[e.tipoId] = true; });
+      tipos.forEach(function (t) { exigibles++; if (con[t.tipoId]) cargadas++; else faltan++; });
+    }
+    const nov = evs.filter(pdcEsNovedad);
+    if (enMes) nov.forEach(function (e) { cuentaTipo[e.tipoId] = (cuentaTipo[e.tipoId] || 0) + 1; totalNov++; });
+    info[dd] = { evs: evs, nov: nov, enMes: enMes, futuro: dd > hoy, exig: exig, faltan: faltan };
+  });
+  return { primero: primero, ultimo: ultimo, dias: dias, info: info, tipos: tipos, cuentaTipo: cuentaTipo, totalNov: totalNov, exigibles: exigibles, cargadas: cargadas, hoy: hoy };
+}
+
+function renderMes() {
+  const primero = pdcMesSel(), M = pdcDatosMes(primero), mesHoy = hoyISO().slice(0, 8) + '01';
+  const d1 = _parseISO(primero);
+  document.getElementById('pdc-dia-label').textContent = MESES_LARGOS[d1.getMonth()] + ' ' + d1.getFullYear() + (primero === mesHoy ? ' · actual' : '');
+  const barra = document.getElementById('pdc-barra');
+  barra.classList.remove('hidden');
+  barra.classList.toggle('completo', M.exigibles > 0 && M.cargadas === M.exigibles);
+  barra.querySelector('i').style.width = (M.exigibles ? Math.round(M.cargadas / M.exigibles * 100) : 0) + '%';
+  document.getElementById('pdc-prog-txt').textContent = M.cargadas + ' / ' + M.exigibles + ' celdas';
+  document.getElementById('pdc-dias').innerHTML = '<div class="pdc-sem-nav">' +
+    '<button type="button" data-mes="-1" title="Mes anterior">◀</button>' +
+    '<button type="button" data-mes="0"' + (primero === mesHoy ? ' disabled' : '') + '>Mes actual</button>' +
+    '<button type="button" data-mes="1" title="Mes siguiente"' + (primero >= mesHoy ? ' disabled' : '') + '>▶</button></div>';
+  // Calendario de la obra
+  const acc = document.getElementById('pdc-mes-acc');
+  const conCal = pdcConCalendario();
+  acc.classList.toggle('sin-cal', !conCal);
+  if (conCal) document.getElementById('pdc-btn-cal-abrir').href = 'https://calendar.google.com/calendar/r?cid=' + encodeURIComponent(pdc.cat.config.PDC_CALENDARIO_ID);
+  document.getElementById('pdc-btn-cal-sync').disabled = !!estado.offline;
+  // Filtro por tipo (uno a la vez, como la línea de tiempo de Hoy)
+  const fT = pdc.filtroMes && pdcTipo(pdc.filtroMes) ? pdc.filtroMes : '';
+  let h = '<div class="pdc-filtro pdc-mes-filtro">' +
+    '<button type="button" class="pdc-fchip' + (fT ? '' : ' on') + '" data-mfiltro="">Todos <b>' + M.totalNov + '</b></button>' +
+    M.tipos.map(function (t) {
+      const n = M.cuentaTipo[t.tipoId] || 0;
+      return '<button type="button" class="pdc-fchip' + (fT === t.tipoId ? ' on' : '') + (n ? '' : ' vacio') + '" data-mfiltro="' + escaparHtml(t.tipoId) + '" title="' + escaparHtml(t.tipo) + '">' +
+        escaparHtml(t.tipo) + ' <b>' + n + '</b></button>';
+    }).join('') + '</div>';
+  h += '<table class="pdc-mes-tabla"><thead><tr>' + ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(function (x) { return '<th>' + x + '</th>'; }).join('') + '</tr></thead><tbody>';
+  for (let w = 0; w < M.dias.length; w += 7) {
+    h += '<tr>';
+    for (let k = 0; k < 7; k++) {
+      const dd = M.dias[w + k], inf = M.info[dd];
+      const evs = fT ? inf.nov.filter(function (e) { return e.tipoId === fT; }) : inf.nov;
+      const cls = 'pdc-mdia' + (inf.enMes ? '' : ' fuera') + (dd === M.hoy ? ' hoy' : '') + (pdc.mesDia === dd ? ' sel' : '') + (inf.futuro ? ' futuro' : '');
+      const tit = pdcDiaLabel(dd) + ' · ' + evs.length + (evs.length === 1 ? ' evento con novedad' : ' eventos con novedad') + (inf.faltan ? ' · faltan ' + inf.faltan + ' tipos' : '');
+      h += '<td><button type="button" class="' + cls + '" data-mdia="' + dd + '" title="' + escaparHtml(tit) + '"' + (inf.futuro ? ' disabled' : '') + '>' +
+        '<span class="pdc-mdia-cab"><span class="num">' + _parseISO(dd).getDate() + '</span>' + (inf.faltan ? '<span class="falta">faltan ' + inf.faltan + '</span>' : '') + '</span>' +
+        evs.slice(0, 3).map(function (e) {
+          return '<span class="pdc-mev i' + pdcImpEf(e) + '" title="' + escaparHtml(pdcHora(e.fechaHora) + ' ' + pdcEtiquetaEv(e)) + '">' + escaparHtml(pdcEtiquetaEv(e)) + '</span>';
+        }).join('') +
+        (evs.length > 3 ? '<span class="mas">+' + (evs.length - 3) + ' más</span>' : '') + '</button></td>';
+    }
+    h += '</tr>';
+  }
+  h += '</tbody></table><div class="pdc-sem-leyenda"><span><i style="background:#f1f5f9"></i>0 sin impacto</span><span><i style="background:#fef9c3"></i>1 leve</span>' +
+    '<span><i style="background:#ffedd5"></i>2 parcial</span><span><i style="background:#fee2e2"></i>3 día caído</span>' +
+    '<span>Solo eventos con novedad (o ajustados con impacto) · "faltan n" = tipos sin cargar</span></div>';
+  document.getElementById('pdc-mes-izq').innerHTML = h;
+  renderMesDetalle(M, fT);
+}
+
+function renderMesDetalle(M, fT) {
+  const cont = document.getElementById('pdc-mes-det');
+  const dd = pdc.mesDia, inf = dd && M.info[dd];
+  if (!inf) {
+    cont.innerHTML = '<div class="pdc-sem-det-cab"><b>Detalle</b></div><div class="pdc-sem-vacio">Elegí un día del mes para ver sus eventos y ajustar el impacto o el responsable.</div>';
+    return;
+  }
+  const evs = inf.evs.filter(function (e) { return !fT || e.tipoId === fT; });
+  const nov = evs.filter(pdcEsNovedad), sn = evs.filter(function (e) { return !pdcEsNovedad(e); });
+  const pend = {};
+  pdc.queue.forEach(function (o) { pend[o.rec.id] = true; });
+  const t = fT ? pdcTipo(fT) : null;
+  let h = '<div class="pdc-sem-det-cab"><b>' + escaparHtml(pdcDiaLabel(dd)) + '</b>' + (t ? ' · ' + escaparHtml(t.tipo) : '') +
+    ' <small style="color:var(--muted)">· ' + nov.length + ' con novedad · ' + sn.length + ' sin novedad' + (inf.faltan ? ' · faltan ' + inf.faltan + ' tipos' : '') + '</small></div><div class="pdc-sem-det-cuerpo">';
+  if (!evs.length) {
+    h += '<div class="pdc-sem-vacio">' + (inf.exig && inf.faltan ? 'Sin eventos cargados.<br><br><button type="button" class="btn btn-secondary btn-sm" data-mcargar="' + dd + '">Cargar en Hoy</button>' : 'Sin eventos.') + '</div>';
+  }
+  nov.forEach(function (e) { h += pdcEvDetHtml(e, pend, true); });
+  if (sn.length) h += '<div class="pdc-mes-sub">Sin novedad (' + sn.length + ')</div>' + sn.map(function (e) { return pdcEvDetHtml(e, pend, true); }).join('');
+  cont.innerHTML = h + '</div>';
+}
+
+/** Clics propios de la vista Mes. Devuelve true si los atendió. */
+function pdcMesClick(e) {
+  const m = e.target.closest('[data-mes]');
+  if (m) {
+    const n = Number(m.dataset.mes), mesHoy = hoyISO().slice(0, 8) + '01';
+    const nuevo = n === 0 ? '' : pdcMesSumar(pdcMesSel(), n);
+    if (nuevo && nuevo > mesHoy) return true;
+    pdc.mes = nuevo === mesHoy ? '' : nuevo;
+    pdc.mesDia = ''; pdc.ajustando = ''; pdc.ajuste = null;
+    renderPdc();
+    if (pdcDesdeVista() && (!pdc.desde || pdcDesdeVista() < pdc.desde) && !estado.offline) pdcTraer();
+    return true;
+  }
+  const d = e.target.closest('[data-mdia]');
+  if (d) { pdc.mesDia = d.dataset.mdia; pdc.ajustando = ''; pdc.ajuste = null; renderPdc(); return true; }
+  const f = e.target.closest('[data-mfiltro]');
+  if (f) { const id = f.dataset.mfiltro; pdc.filtroMes = id && pdc.filtroMes !== id ? id : ''; renderPdc(); return true; }
+  const c = e.target.closest('[data-mcargar]');
+  if (c) { pdc.vista = 'hoy'; pdcElegirDia(c.dataset.mcargar); return true; }
+  return false;
+}
+
+/** "⟳ Sincronizar ahora": manda la cola pendiente y pasa los eventos con novedad al calendario de la obra. */
+async function pdcCalSincronizar() {
+  const b = document.getElementById('pdc-btn-cal-sync');
+  if (b.disabled || estado.offline || !estado.obra) return;
+  b.disabled = true;
+  tareaIniciar('cal', 'Sincronizando el calendario de la obra…');
+  try {
+    if (pdc.queue.length) await pdcEnviar();
+    const r = await api('pdcCalSync', {});
+    tareaOk('cal', 'Calendario al día: ' + r.creados + (r.creados === 1 ? ' nuevo, ' : ' nuevos, ') + r.actualizados + ' actualizados, ' + r.borrados + ' borrados' +
+      (r.errores ? ' · ' + r.errores + ' con error (ver Log_GAS)' : '') + (r.cortado ? ' · sigue a las 23 hs' : ''));
+  } catch (err) {
+    tareaError('cal', 'No se pudo sincronizar el calendario: ' + err.message, [{ texto: 'Reintentar', fn: pdcCalSincronizar, primario: true }]);
+  } finally {
+    b.disabled = !!estado.offline;
+  }
 }
 
 // ── Informe semanal en PDF: 1) resumen · 2) grilla · 3) anexo (hoja nueva: se imprime aparte) ──
@@ -6277,6 +6569,7 @@ function seccionInicial() { return estado.modoCel ? (estado.puedePdC ? 'pdc' : '
 function aplicarModoCel() {
   estado.modoCel = MQ_CEL.matches;
   document.body.classList.toggle('modo-cel', estado.modoCel);
+  document.documentElement.style.overflowAnchor = estado.modoCel ? 'none' : '';   // v7.0.4 — el navegador no corrige el scroll solo
   if (estado.modoCel && estado.obra && document.getElementById('app').style.display !== 'none' && SECCIONES_CEL.indexOf(estado.seccion) === -1) {
     estado.seccionAuto = true;
     showSection(seccionInicial(), true);
