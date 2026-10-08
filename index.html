@@ -3,11 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra v7.0.4</title>
+<title>LibroObra v7.0.5</title>
 <!--
-  index_libroobra_v7_0_4.html — LibroObra v7.0.4 (08-oct-2026)
-  Backend: gas_libroobra_v7_0_4.gs (calendario + cuadrados; publicar como
-  Nueva versión). sw.js: sw_libroobra_v7_0_4.js.
+  index_libroobra_v7_0_5.html — LibroObra v7.0.5 (08-oct-2026)
+  Backend: gas_libroobra_v7_0_5.gs (cuadrado en el título del evento del
+  calendario; publicar como Nueva versión). sw.js: sw_libroobra_v7_0_5.js.
+
+  QUÉ CAMBIÓ EN v7.0.5 (respecto a v7.0.4):
+    · Celular: en el panel del tipo se ocultan Cerrar / Registrar (o
+      Saltar / Terminar). Quedan solo los botones redondos ✓ / ✕, con el
+      mismo comportamiento de la 7.0.3. La computadora no cambia.
 
   QUÉ CAMBIÓ EN v7.0.4 (respecto a v7.0.3):
    - Celular: la franja fija del PdC ya no salta ni titila. Al achicarse,
@@ -1301,7 +1306,8 @@ body.pdc-toast-on #pdc-fab { bottom: calc(96px + env(safe-area-inset-bottom, 0px
 .pdc-fab-ok:disabled { background: #a7d8b6; box-shadow: none; cursor: default; }
 .pdc-fab-no { width: 50px; height: 50px; background: #0f172a; }
 body.modo-cel.pdc-fab-on .pdc-cuerpo { padding-bottom: 160px; }
-body.modo-cel.pdc-fab-on #tareas-panel { right: 84px; }   /* el panel de tareas queda a la izquierda de los botones */
+body.modo-cel.pdc-fab-on #tareas-panel { right: 84px; }
+body.modo-cel .pdc-form-pie { display: none; }   /* v7.0.5 — en el celular, solo los botones redondos ✓ / ✕ */   /* el panel de tareas queda a la izquierda de los botones */
 
 /* Toast con Deshacer */
 #pdc-toast { position: fixed; left: 12px; right: 12px; bottom: 16px; z-index: 960; max-width: 520px; margin: 0 auto; background: var(--accent2); color: #fff; border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow-md); display: none; overflow: hidden; }
@@ -2009,7 +2015,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
 // ══════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════
-const APP_VERSION = 'v7.0.4';
+const APP_VERSION = 'v7.0.5';
 const API_URL = 'https://script.google.com/macros/s/AKfycbxDN2F_K6z4wQXDJAyyZ6EdoSqoQgHv8d8f7gXGo-QYdke3DXW6hvZtEnmEy9xFpjTO/exec';
 const SESION_KEY = 'lo_sesion';
 const OBRA_KEY = 'lo_obra_actual';
