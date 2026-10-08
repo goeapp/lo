@@ -3,8 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra v7.0.2 r1</title>
+<title>LibroObra v7.0.3</title>
 <!--
+  index_libroobra_v7_0_3.html — LibroObra v7.0.3 (08-oct-2026)
+  Backend: gas_libroobra_v7_0_3.gs (avisos del PdC; publicar como Nueva
+  versión: la API_URL no cambia). sw.js: sw_libroobra_v7_0_3.js.
+
+  QUÉ CAMBIÓ EN v7.0.3 (respecto a v7.0.2 r1):
+   - Celular: botones flotantes en el Parte de Contrato. Con un tipo
+     abierto y al menos una opción marcada aparecen abajo a la derecha:
+     ✓ verde = Registrar (pálido y sin acción si falta la observación
+     obligatoria) y ✕ oscuro = Cerrar (descarta lo marcado; en
+     "Completar parte" = Saltar). Suben si está el toast de Deshacer.
+   - Al volver la app a primer plano, el PdC se recarga solo si pasó más
+     de 1 minuto desde la última carga (diagnóstico 08-oct: se recargaba
+     cada vez). La cola pendiente se envía igual.
+   - Los avisos de faltantes (Telegram / mail) los manda el backend: el
+     frontend no cambia por eso.
+
+  (historia anterior)
   index_libroobra_v7_0_2_r1.html — LibroObra v7.0.2 r1 (07-oct-2026)
   Backend: gas_libroobra_v7_0_2.gs (SIN CAMBIOS). sw.js: sw_libroobra_v7_0_2_r1.js.
 
@@ -1193,6 +1210,19 @@ body:not(.modo-cel) .pdc-pie { padding-top: 10px; }
 body.pdc-escritorio #main-content { padding-bottom: 16px; }
 body.modo-cel .pdc-cuerpo { min-height: calc(100vh - var(--hdr-alto, 88px)); }   /* margen para que la franja compacta no titile */
 
+/* v7.0.3 — botones flotantes del PdC (celular): ✕ arriba, ✓ abajo (a mano del pulgar) */
+#pdc-fab { position: fixed; right: 16px; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 955; display: none; flex-direction: column; align-items: center; gap: 12px; transition: bottom .2s ease; }
+#pdc-fab.visible { display: flex; animation: fadeUp .18s ease; }
+body.pdc-toast-on #pdc-fab { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+.pdc-fab-btn { border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; box-shadow: 0 4px 14px rgba(15,23,42,.32); transition: transform .08s, background .15s; -webkit-tap-highlight-color: transparent; }
+.pdc-fab-btn:active:not(:disabled) { transform: scale(.94); }
+.pdc-fab-btn svg { display: block; }
+.pdc-fab-ok { width: 62px; height: 62px; background: #16a34a; }
+.pdc-fab-ok:disabled { background: #a7d8b6; box-shadow: none; cursor: default; }
+.pdc-fab-no { width: 50px; height: 50px; background: #0f172a; }
+body.modo-cel.pdc-fab-on .pdc-cuerpo { padding-bottom: 160px; }
+body.modo-cel.pdc-fab-on #tareas-panel { right: 84px; }   /* el panel de tareas queda a la izquierda de los botones */
+
 /* Toast con Deshacer */
 #pdc-toast { position: fixed; left: 12px; right: 12px; bottom: 16px; z-index: 960; max-width: 520px; margin: 0 auto; background: var(--accent2); color: #fff; border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow-md); display: none; overflow: hidden; }
 #pdc-toast.visible { display: flex; align-items: center; gap: 10px; animation: fadeUp .2s ease; }
@@ -1236,7 +1266,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
   <div class="caja">
     <span class="caja-emoji">📋</span>
     <div class="caja-logo">LibroObra</div>
-    <div class="caja-version" id="version-login">v7.0.2 r1</div>
+    <div class="caja-version" id="version-login">v7.0.3</div>
     <div class="caja-sub">Registro de comunicaciones de obra</div>
 
     <div id="paso-email" class="login-paso activo">
@@ -1304,7 +1334,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
     <button class="hdr-btn" id="btn-cambiar-obra" onclick="cambiarObra()">Cambiar obra</button>
     <button class="hdr-btn hdr-btn-instalar hidden" id="btn-instalar">Instalar</button>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version" id="version-app">v7.0.2 r1</span>
+    <span class="hdr-version" id="version-app">v7.0.3</span>
     <button class="hdr-btn" onclick="confirmarCerrarSesion()">Salir</button>
   </header>
 
@@ -1873,6 +1903,11 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
 <div id="toast" class="toast"></div>
 <!-- v7.0.0 — Parte de Contrato: toast con Deshacer (v7.0.1: la carga va en el panel del tipo, sin wizard) -->
 <div id="pdc-toast" role="status" aria-live="polite"><span class="pt-txt" id="pdc-toast-txt"></span><button type="button" id="pdc-toast-undo">Deshacer</button><div class="pt-prog" id="pdc-toast-prog"></div></div>
+<!-- v7.0.3 — botones flotantes del PdC (celular) -->
+<div id="pdc-fab" aria-hidden="true">
+  <button type="button" class="pdc-fab-btn pdc-fab-no" data-fab="cerrar" title="Cerrar" aria-label="Cerrar"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <button type="button" class="pdc-fab-btn pdc-fab-ok" data-fab="registrar" title="Registrar" aria-label="Registrar"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7"/></svg></button>
+</div>
 <div id="tareas-panel" role="status" aria-live="polite"></div>
 <div id="hm-tooltip" class="tooltip-flotante"></div>
 <div id="hi-tl-tooltip" class="hi-tl-tooltip"></div>
@@ -1883,7 +1918,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
 // ══════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════
-const APP_VERSION = 'v7.0.2 r1';
+const APP_VERSION = 'v7.0.3';
 const API_URL = 'https://script.google.com/macros/s/AKfycbxDN2F_K6z4wQXDJAyyZ6EdoSqoQgHv8d8f7gXGo-QYdke3DXW6hvZtEnmEy9xFpjTO/exec';
 const SESION_KEY = 'lo_sesion';
 const OBRA_KEY = 'lo_obra_actual';
@@ -5513,6 +5548,7 @@ document.getElementById('sec-pdc').addEventListener('input', function (e) {
   e.target.classList.toggle('req-vacio', pdcFormObsObligatoria(f) && !f.obs.trim());
   const btn = fm.querySelector('[data-w="registrar"]');
   if (btn) btn.disabled = !pdcFormPuede(f);
+  pdcPintarFab();   // v7.0.3
 });
 document.getElementById('sec-pdc').addEventListener('change', function (e) {
   if (e.target.closest('.pdc-aj-form')) { pdcAjusteInput(e.target); return; }   // v7.0.2
@@ -5697,7 +5733,42 @@ function pdcScrollATipo(tipoId) {
 }
 
 // ── v7.0.1 — Franja fija: alto de las columnas (computadora) y franja compacta al bajar (celular) ──
+/** v7.0.3 — tipo con botones flotantes: celular, PdC en Hoy, un tipo abierto y al menos una opción marcada. */
+function pdcFabTipo() {
+  if (!estado.modoCel || estado.seccion !== 'pdc' || !pdc.cat || pdcEnSemana()) return '';
+  const ids = Object.keys(pdc.abiertos).filter(function (k) { return pdc.abiertos[k]; });
+  if (ids.length !== 1) return '';
+  const f = pdc.forms[ids[0]];
+  return f && f.sel.length ? ids[0] : '';
+}
+function pdcPintarFab() {
+  const el = document.getElementById('pdc-fab');
+  const tipo = pdcFabTipo();
+  el.classList.toggle('visible', !!tipo);
+  el.setAttribute('aria-hidden', tipo ? 'false' : 'true');
+  document.body.classList.toggle('pdc-fab-on', !!tipo);
+  if (!tipo) { el.dataset.tipo = ''; return; }
+  el.dataset.tipo = tipo;
+  const f = pdcForm(tipo);
+  const okB = el.querySelector('[data-fab="registrar"]'), noB = el.querySelector('[data-fab="cerrar"]');
+  okB.disabled = !pdcFormPuede(f);
+  okB.title = okB.disabled ? 'Falta la observación obligatoria' : 'Registrar' + (f.sel.length > 1 ? ' (' + f.sel.length + ')' : '');
+  okB.setAttribute('aria-label', okB.title);
+  const saltar = pdc.secuencia === tipo;
+  noB.title = saltar ? (pdcSiguientePendiente(tipo) ? 'Saltar' : 'Terminar') : 'Cerrar';
+  noB.setAttribute('aria-label', noB.title);
+}
+document.getElementById('pdc-fab').addEventListener('click', function (e) {
+  const b = e.target.closest('[data-fab]');
+  const tipo = this.dataset.tipo;
+  if (!b || !tipo || b.disabled) return;
+  if (b.dataset.fab === 'registrar') pdcFormRegistrar(tipo);
+  else if (pdc.secuencia === tipo) pdcSecuenciaSiguiente(tipo);
+  else pdcCerrarTipo(tipo);
+});
+
 function pdcAjustarAlto() {
+  pdcPintarFab();   // v7.0.3
   const hdr = document.getElementById('app-header');
   if (hdr && hdr.offsetHeight) document.documentElement.style.setProperty('--hdr-alto', hdr.offsetHeight + 'px');
   const escritorio = !estado.modoCel && estado.seccion === 'pdc';
@@ -6159,13 +6230,14 @@ function pdcToast(txt, ids) {
   const el = document.getElementById('pdc-toast');
   document.getElementById('pdc-toast-txt').textContent = txt;
   el.classList.add('visible');
+  document.body.classList.add('pdc-toast-on');   // v7.0.3 — los botones flotantes suben
   const prog = document.getElementById('pdc-toast-prog');
   prog.style.transition = 'none'; prog.style.width = '100%';
   requestAnimationFrame(function () { requestAnimationFrame(function () { prog.style.transition = 'width ' + PDC_TOAST_MS + 'ms linear'; prog.style.width = '0%'; }); });
   clearTimeout(pdcToastTimer);
   pdcToastTimer = setTimeout(pdcOcultarToast, PDC_TOAST_MS);
 }
-function pdcOcultarToast() { document.getElementById('pdc-toast').classList.remove('visible'); pdcToastIds = null; clearTimeout(pdcToastTimer); }
+function pdcOcultarToast() { document.getElementById('pdc-toast').classList.remove('visible'); document.body.classList.remove('pdc-toast-on'); pdcToastIds = null; clearTimeout(pdcToastTimer); }
 document.getElementById('pdc-toast-undo').addEventListener('click', function () {
   if (pdcToastIds) pdcDeshacer(pdcToastIds);
   pdcOcultarToast();
@@ -6189,9 +6261,11 @@ window.addEventListener('online', function () {
   if (estado.offline) { reconectar(); return; }
   if (pdc.queue.length) pdcEnviar();
 });
+const PDC_RECARGA_MIN_MS = 60000;   // v7.0.3 — al volver a primer plano, recargar solo si pasó más de 1 minuto
 document.addEventListener('visibilitychange', function () {
   if (document.hidden || estado.seccion !== 'pdc' || !pdc.obraId || !estado.email || estado.offline) return;
   renderPdc();
+  if (Date.now() - pdc.ultimoPull < PDC_RECARGA_MIN_MS) { if (pdc.queue.length) pdcEnviar(); return; }
   pdcTraer().then(function () { if (pdc.queue.length) pdcEnviar(); });
 });
 
