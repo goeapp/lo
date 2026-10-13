@@ -3,8 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra v7.0.5</title>
+<title>LibroObra v8.0.0</title>
 <!--
+  index_libroobra_v8_0_0.html — LibroObra v8.0.0 (13-oct-2026)
+  Datos: Supabase (proyecto PWAgoe, tablas lo_ + comunes goe_), esquema
+  lo_esquema_v8_0_0.sql. Google (adjuntos, texto de los PDF, avisos,
+  calendario): LO Sync, lo_sync_gas_v1_0.gs. sw.js: sw_libroobra_v8_0_0.js.
+  Diseño: Diseno_LO_v8_0_0.md.
+
+  QUÉ CAMBIÓ EN v8.0.0 (respecto a v7.0.5) — MIGRACIÓN A SUPABASE:
+    · Login: Supabase Auth (código por mail), sesión propia "lo-sb-auth";
+      cerrar sesión cierra solo este dispositivo. Adiós pwa_pin.
+    · Obras y perfiles: de GOE Admin (goe_mis_obras / goe_mi_nivel).
+      ver = consulta (sin PdC) · editar = carga y usa el PdC · rac y
+      administrar = además configuran la obra.
+    · Lecturas y escrituras directo a Supabase: la capa de datos
+      (llamarBackend / api) devuelve lo mismo que el GAS 7.0.5, así que
+      las pantallas no cambian. Alta con adjunto, "Leer ahora" y
+      "Sincronizar calendario": LO Sync con la sesión de la persona.
+    · Dashboard: se calcula en el navegador al abrir la obra (sin
+      DashboardCache ni botón Recalcular: siempre está al día).
+    · Buscar: el texto de los PDF viene de lo_textos; misma lógica.
+    · Actividad de uso en goe_actividad.
+
+  ── historia anterior (v7.0.5) ──
   index_libroobra_v7_0_5.html — LibroObra v7.0.5 (08-oct-2026)
   Backend: gas_libroobra_v7_0_5.gs (cuadrado en el título del evento del
   calendario; publicar como Nueva versión). sw.js: sw_libroobra_v7_0_5.js.
@@ -308,6 +330,7 @@
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.11/js/jquery.dataTables.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
 
 <style>
 /* ══════════════════════════════════════════════
@@ -1365,9 +1388,9 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
 
     <div id="paso-codigo" class="login-paso">
       <div class="caja-title">Ingresá el código</div>
-      <div class="caja-desc">Te enviamos un código de 6 dígitos a <strong id="email-confirmado"></strong>.</div>
+      <div class="caja-desc">Te enviamos un código por mail a <strong id="email-confirmado"></strong>.</div>
       <div id="login-error-pin" class="msg-error"></div>
-      <input type="text" id="input-pin" class="input-pin" maxlength="6" inputmode="numeric" placeholder="······" autocomplete="one-time-code">
+      <input type="text" id="input-pin" class="input-pin" maxlength="8" inputmode="numeric" placeholder="······" autocomplete="one-time-code">
       <button class="btn-accion" id="btn-validar-pin">Ingresar</button>
       <button class="btn-secundario" id="btn-reenviar-pin">Reenviar código</button>
     </div>
@@ -1433,7 +1456,7 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
         <div class="sec-title"><div class="sec-title-dot"></div>Inicio</div>
         <div class="sec-actions">
           <span class="dash-leyenda" id="dash-leyenda">Sin datos calculados todavía</span>
-          <button class="btn btn-secondary btn-sm" id="btn-recalcular" onclick="recalcularDashboardManual()">↻ Recalcular</button>
+          <button class="btn btn-secondary btn-sm hidden" id="btn-recalcular" onclick="recalcularDashboardManual()">↻ Recalcular</button>
         </div>
       </div>
 
@@ -2015,8 +2038,15 @@ body.modo-cel .hdr-nav-btn:not(.nav-cel), body.modo-cel .hdr-nav-guia { display:
 // ══════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════
-const APP_VERSION = 'v7.0.5';
-const API_URL = 'https://script.google.com/macros/s/AKfycbxDN2F_K6z4wQXDJAyyZ6EdoSqoQgHv8d8f7gXGo-QYdke3DXW6hvZtEnmEy9xFpjTO/exec';
+const APP_VERSION = 'v8.0.0';
+// v8.0.0 — Supabase (proyecto PWAgoe) + LO Sync (GAS ayudante, cuenta goecdg)
+const SUPABASE_URL = 'https://uhuftsxrzwhmvzygcuvp.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_TCibRAnzgaDIbn_MIirw6w_FltKG8X3';
+const LO_SYNC_URL = 'https://script.google.com/macros/s/AKfycby9lABhrm1yPIe1Qg7s6SwHY_Ryo3CT_z2eaaJ3tGYfD_JbzeokaIUn85TKrErwV6kJvA/exec';
+// Sesión propia de LO: todas las PWA viven en goeapp.github.io (mismo localStorage)
+const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, storageKey: 'lo-sb-auth' }
+}) : null;
 const SESION_KEY = 'lo_sesion';
 const OBRA_KEY = 'lo_obra_actual';
 const DASH_KEY_PREFIJO = 'lo_dash_';
@@ -2380,112 +2410,346 @@ function cerrarModal(id) { document.getElementById(id).classList.remove('open');
 // Sin cierre por click afuera en los modales de carga/edición (criterio V5/PreKOM): solo X o Cancelar.
 
 // ══════════════════════════════════════════════
-// BACKEND — llamarBackend (portado de PreKOM v8.7.1)
+// v8.0.0 — DATOS EN SUPABASE (reemplaza llamarBackend → GAS)
 // ══════════════════════════════════════════════
-// Reintento automático 1 sola vez, solo en acciones seguras de repetir.
-// registrarComunicacion y guardarHito son seguras: el Id se genera acá y
-// el backend es idempotente (diseño §7.1).
-const ACCIONES_SEGURAS_REINTENTO = new Set([
-  'inicializarSesion', 'inicializarObraLiviana', 'inicializarObraPesada', 'validarSesion',
-  'getHistorial', 'getHitosLog', 'recalcularDashboard', 'registrarComunicacion', 'guardarHito',
-  'crearVinculo', 'bajaVinculo',  // v6.1.0 — idempotentes (IdVinculo generado acá / baja repetida = yaEstaba)
-  'pdcInicializar', 'pdcBatch',   // v7.0.0 — lectura / lote idempotente por ID
-  'pdcCalSync'                    // v7.0.4 — idempotente (firma por evento)
-]);
-// Mismo alcance que ACCIONES_GET + PWAPIN_ACCIONES_GET del .gs. validarPIN va por POST (el PIN no viaja en la URL).
-const ACCIONES_GET = new Set([
-  'inicializarSesion', 'inicializarObraLiviana', 'inicializarObraPesada',
-  'getHistorial', 'getHitosLog', 'recalcularDashboard', 'bajaHito',
-  'crearVinculo', 'bajaVinculo',   // v6.1.0
-  'pdcInicializar',                // v7.0.0 (pdcBatch va por POST: el lote puede ser largo)
-  'pdcCalSync',                    // v7.0.4
-  'solicitarPIN', 'validarSesion'
-]);
+// El resto de la app no cambia: llamarBackend(action, params) y api()
+// devuelven lo mismo que devolvía el GAS 7.0.5, pero ahora:
+//   · lecturas y escrituras van DIRECTO a Supabase (funciones lo_* de la
+//     base, que controlan los permisos con goe_mi_nivel y aplican las
+//     reglas del GAS en una sola operación);
+//   · lo que necesita Google (adjunto a Drive, texto de los PDF, calendario)
+//     va a LO Sync con la sesión de la persona.
+// Un rechazo de la base vuelve como {ok:false, error} (mismo trato que un
+// rechazo del GAS); una falla de red tira una excepción (mismo trato que antes).
 
-function armarQueryString_(action, params) {
-  const qs = new URLSearchParams();
-  qs.set('action', action);
-  Object.keys(params || {}).forEach(function (k) {
-    const v = params[k];
-    qs.set(k, (v !== null && typeof v === 'object') ? JSON.stringify(v) : String(v));
-  });
-  return qs.toString();
+const ACCIONES_LO_SYNC = new Set(['registrarComunicacion', 'indexarTexto', 'pdcCalSync']);
+// Reintento automático 1 sola vez en LO Sync (todas idempotentes: Id generado acá)
+const TIMEOUT_LO_SYNC = { registrarComunicacion: 330000, indexarTexto: 330000, pdcCalSync: 330000 };
+
+function errRed_() { return new Error('No se pudo conectar con el servidor. Revisá tu conexión y volvé a intentar.'); }
+function errSinConexion_() { return new Error('Estás sin conexión a internet. Revisá tu conexión y volvé a intentar.'); }
+
+/** Error de supabase-js → rechazo de la base ({ok:false}) o falla de red (excepción). */
+function sbResultado_(action, res) {
+  if (!res.error) return res.data;
+  const e = res.error;
+  const msg = String(e.message || e.msg || '');
+  // PostgREST/Postgres siempre traen un código (P0001, 42501, PGRST…). Sin código = no llegó.
+  if (!e.code && !e.details && (/fetch|network|Failed|Load failed|NetworkError/i.test(msg) || !msg)) {
+    console.error('[datos]', action, '— red:', e);
+    throw errRed_();
+  }
+  console.error('[datos]', action, '— rechazo de la base:', e);
+  if (e.code === 'PGRST301' || e.code === 'PGRST303' || /JWT/i.test(msg)) return { ok: false, motivo: 'sin_sesion', error: 'La sesión venció. Volvé a ingresar.' };
+  return { ok: false, error: msg || 'La base rechazó la operación.' };
+}
+async function rpc_(action, fn, args) {
+  const r = sbResultado_(action, await sb.rpc(fn, args));
+  return r;
 }
 
-// v7.0.2 r1 — tiempo máximo por acción (ms). Un fetch colgado ya no deja la pantalla trabada.
-const TIMEOUT_BACKEND = {
-  inicializarSesion: 25000, validarSesion: 25000, solicitarPIN: 25000, validarPIN: 25000, inicializarObraLiviana: 25000,
-  pdcInicializar: 30000, pdcBatch: 30000, pdcAjustar: 30000,
-  inicializarObraPesada: 60000,
-  registrarComunicacion: 330000, indexarTexto: 330000, recalcularDashboard: 330000,   // subida / lectura de PDF / cálculo
-  pdcCalSync: 330000   // v7.0.4 — calendario
-};
-const TIMEOUT_BACKEND_DEF = 120000;
-async function llamarBackend(action, params, reintentando) {
-  const esGet = ACCIONES_GET.has(action);
+async function llamarBackend(action, params) {
+  params = params || {};
   if (!navigator.onLine) {
     console.error('[llamarBackend]', action, '— sin conexión (navigator.onLine=false)');
-    throw new Error('Estás sin conexión a internet. Revisá tu conexión y volvé a intentar.');
+    throw errSinConexion_();
   }
-  let resp;
-  const ms = TIMEOUT_BACKEND[action] || TIMEOUT_BACKEND_DEF;
-  const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-  const timer = ctrl ? setTimeout(function () { ctrl.abort(); }, ms) : null;
-  const errTimeout = function () { return new Error('El servidor no respondió en ' + Math.round(ms / 1000) + ' s. Revisá la conexión y volvé a intentar.'); };
-  try {
-    if (esGet) {
-      resp = await fetch(API_URL + '?' + armarQueryString_(action, params), ctrl ? { signal: ctrl.signal } : undefined);
-    } else {
-      resp = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight CORS
-        body: JSON.stringify(Object.assign({ action: action }, params || {})),
-        signal: ctrl ? ctrl.signal : undefined
-      });
+  if (!sb) throw errRed_();   // no cargó la librería de Supabase (sin señal al abrir)
+  if (ACCIONES_LO_SYNC.has(action)) return llamarLoSync_(action, params, false);
+  const obraId = params.obraId || (estado.obra ? estado.obra.obraId : '');
+  switch (action) {
+    case 'inicializarSesion': return datosInicializarSesion_();
+    case 'inicializarObraLiviana': return rpc_(action, 'lo_permisos', { p_obra: obraId });
+    case 'inicializarObraPesada': {
+      const r = await rpc_(action, 'lo_cargar_obra', { p_obra: obraId });
+      if (r && r.ok) r.dashboard = calcularDashboardLocal(r.comunicaciones || [], r.tipos || [], r.hitos || []);
+      return r;
     }
-  } catch (fetchErr) {
-    clearTimeout(timer);
-    return llamarBackendManejarFallo_(action, params, reintentando, ctrl && ctrl.signal.aborted ? errTimeout()
-      : new Error('No se pudo conectar con el backend. Revisá tu conexión y volvé a intentar.'));
+    case 'recalcularDashboard':
+      return { ok: true, dashboard: calcularDashboardLocal(estado.comunicaciones, estado.tipos, estado.hitos) };
+    case 'getHistorial': return rpc_(action, 'lo_historial', { p_obra: obraId, p_id: params.id });
+    case 'getHitosLog': return rpc_(action, 'lo_hitos_log_de', { p_obra: obraId, p_id: params.idHito });
+    case 'editarComunicacion':
+      return rpc_(action, 'lo_editar_comunicacion', { p: Object.assign({}, params, {
+        obraId: obraId, etiquetas: Array.isArray(params.etiquetas) ? params.etiquetas.join(', ') : (params.etiquetas || '') }) });
+    case 'crearVinculo': return rpc_(action, 'lo_crear_vinculo', { p: Object.assign({}, params, { obraId: obraId,
+      apagarRequiereOrigen: params.apagarRequiereOrigen === true || params.apagarRequiereOrigen === 'true' ? 'true' : '' }) });
+    case 'bajaVinculo': return rpc_(action, 'lo_baja_vinculo', { p_obra: obraId, p_id: params.idVinculo });
+    case 'guardarHito': return rpc_(action, 'lo_guardar_hito', { p: Object.assign({}, params, { obraId: obraId,
+      esAlta: params.esAlta === true || params.esAlta === 'true' ? 'true' : 'false', orden: String(params.orden == null ? '' : params.orden) }) });
+    case 'bajaHito': return rpc_(action, 'lo_baja_hito', { p_obra: obraId, p_id: params.idHito });
+    case 'buscar': return datosBuscar_(obraId, params);
+    case 'pdcInicializar': return rpc_(action, 'lo_pdc_inicializar', { p_obra: obraId, p_desde: params.desde || '', p_hasta: params.hasta || '' });
+    case 'pdcBatch': return rpc_(action, 'lo_pdc_batch', { p_obra: obraId, p_ops: params.ops || [] });
+    case 'pdcAjustar': return rpc_(action, 'lo_pdc_ajustar', { p: Object.assign({}, params, { obraId: obraId,
+      impactoAjust: params.impactoAjust === null || params.impactoAjust === undefined ? '' : String(params.impactoAjust) }) });
   }
-  let texto = '';
-  try { texto = await resp.text(); } catch (e) {
-    clearTimeout(timer);
-    if (ctrl && ctrl.signal.aborted) return llamarBackendManejarFallo_(action, params, reintentando, errTimeout());
-    texto = '';
-  }
-  clearTimeout(timer);
-  if (!resp.ok) {
-    console.error('[llamarBackend]', action, 'HTTP ' + resp.status + ' — ' + (resp.url || '') + ' — respuesta (300 car.):', texto.slice(0, 300));
-    return llamarBackendManejarFallo_(action, params, reintentando, new Error('El backend respondió con un error (HTTP ' + resp.status + ').'));
-  }
-  try {
-    return JSON.parse(texto);
-  } catch (parseErr) {
-    console.error('[llamarBackend]', action, 'respuesta NO JSON (300 car.):', texto.slice(0, 300));
-    return llamarBackendManejarFallo_(action, params, reintentando, new Error('El backend devolvió una respuesta inválida.'));
-  }
+  throw new Error('Acción desconocida: ' + action);
 }
-async function llamarBackendManejarFallo_(action, params, reintentando, errorClasificado) {
-  const paramsLog = Object.assign({}, params || {});
-  if (paramsLog.archivo) paramsLog.archivo = { nombre: paramsLog.archivo.nombre, bytesBase64: (paramsLog.archivo.base64 || '').length };
-  if (paramsLog.pin) paramsLog.pin = '******'; // v6.0.1 — el PIN nunca a la consola
-  console.error('[llamarBackend]', action, paramsLog, '—', errorClasificado.message);
-  if (!reintentando && ACCIONES_SEGURAS_REINTENTO.has(action)) {
-    await new Promise(function (r) { setTimeout(r, 700); });
-    return llamarBackend(action, params, true);
-  }
-  throw errorClasificado;
-}
-/** Atajo: llama con email+obraId y convierte {ok:false} en excepción. */
+
+/** Atajo: llama con obraId y convierte {ok:false} en excepción (igual que en la 7.0.5). */
 async function api(action, params) {
   const res = await llamarBackend(action, Object.assign({ email: estado.email, obraId: estado.obra ? estado.obra.obraId : '' }, params || {}));
   if (!res || !res.ok) {
-    const e = new Error((res && (res.error || res.motivo)) || 'Error desconocido del backend.');
-    e.respuesta = res;
+    const e = new Error((res && (res.error || res.motivo)) || 'Error desconocido del servidor.');
+    e.respuesta = res || { ok: false };
     throw e;
   }
   return res;
+}
+
+/** Sesión + obras visibles (= inicializarSesion del GAS). */
+async function datosInicializarSesion_() {
+  const s = await sb.auth.getSession();
+  const session = s && s.data && s.data.session;
+  if (!session) return { ok: false, motivo: 'sin_sesion' };
+  const email = String(session.user.email || '').toLowerCase();
+  const [rObras, rEntra, rPersona] = await Promise.all([
+    sb.rpc('goe_mis_obras', { p_app: 'lo' }),
+    sb.rpc('goe_puede_entrar', { p_app: 'lo' }),
+    sb.rpc('goe_mi_persona')
+  ]);
+  const obras = sbResultado_('goe_mis_obras', rObras);
+  const entra = sbResultado_('goe_puede_entrar', rEntra);
+  const personaId = sbResultado_('goe_mi_persona', rPersona);
+  if (obras && obras.ok === false) return obras;
+  if (!personaId) return { ok: false, motivo: 'no_encontrado' };
+  if (entra !== true && (!Array.isArray(obras) || !obras.length)) return { ok: false, motivo: 'no_encontrado' };
+  let nombre = email, esAdmin = false;
+  const rp = await sb.from('goe_personas').select('nombre_apellido, es_admin_global').eq('id', personaId).maybeSingle();
+  if (!rp.error && rp.data) { nombre = rp.data.nombre_apellido || email; esAdmin = !!rp.data.es_admin_global; }
+  const PERFIL = { administrar: 'admin', rac: 'rac', editar: 'usuario', ver: 'consulta' };
+  return {
+    ok: true, email: email, nombreApellido: nombre, noExpira: true, esAdmin: esAdmin,
+    obras: (obras || []).map(function (o) {
+      return { obraId: o.obra_id, codigoObra: o.codigo, nombreObra: o.nombre_corto, perfil: esAdmin ? 'admin' : (PERFIL[o.perfil] || o.perfil) };
+    })
+  };
+}
+
+/** LO Sync (Google): adjunto, texto de los PDF, calendario. Va con la sesión de la persona. */
+async function llamarLoSync_(action, params, reintentando) {
+  const s = await sb.auth.getSession();
+  const session = s && s.data && s.data.session;
+  if (!session) return { ok: false, motivo: 'sin_sesion', error: 'La sesión venció. Volvé a ingresar.' };
+  const body = Object.assign({}, params, { action: action, token: session.access_token });
+  delete body.email;
+  if (Array.isArray(body.etiquetas)) body.etiquetas = body.etiquetas.join(', ');
+  const ms = TIMEOUT_LO_SYNC[action] || 120000;
+  const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(function () { ctrl.abort(); }, ms) : null;
+  let texto = '';
+  try {
+    const resp = await fetch(LO_SYNC_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },   // sin preflight CORS
+      body: JSON.stringify(body), signal: ctrl ? ctrl.signal : undefined
+    });
+    texto = await resp.text();
+    clearTimeout(timer);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    return JSON.parse(texto);
+  } catch (err) {
+    clearTimeout(timer);
+    console.error('[LO Sync]', action, err, String(texto).slice(0, 300));
+    if (!reintentando) {   // el 404 intermitente de Apps Script: 1 reintento (idempotente)
+      await new Promise(function (r) { setTimeout(r, 700); });
+      return llamarLoSync_(action, params, true);
+    }
+    throw ctrl && ctrl.signal.aborted
+      ? new Error('LO Sync no respondió en ' + Math.round(ms / 1000) + ' s. Revisá la conexión y volvé a intentar.')
+      : new Error('No se pudo conectar con LO Sync (Google). Volvé a intentar en un momento.');
+  }
+}
+
+/** v8.0.0 — Actividad de uso en goe_actividad (la base fija quién y cuándo). Nunca frena la app. */
+function registrarActividad(evento, objeto, detalle) {
+  try {
+    if (!estado.email || !navigator.onLine) return;
+    sb.from('goe_actividad').insert({ app: 'lo', obra_id: estado.obra ? estado.obra.obraId : null, evento: evento,
+      objeto: objeto || null, resultado: 'ok', detalle: detalle || null, sesion_id: SESION_ID })
+      .then(function (r) { if (r.error) console.warn('[actividad]', r.error.message); }, function () { });
+  } catch (e) { }
+}
+const SESION_ID = uuid();
+
+// ══════════════════════════════════════════════
+// v8.0.0 — DASHBOARD CALCULADO EN EL NAVEGADOR (= LO_calcularDashboard_ del GAS 7.0.5)
+// ══════════════════════════════════════════════
+const MAX_NUMERO_INCONSISTENCIAS = 100000;
+const TEXTOS_LISTA_MAX = 50;
+function _fhLocal(d) { return d.getFullYear() + '-' + _p2(d.getMonth() + 1) + '-' + _p2(d.getDate()) + ' ' + _p2(d.getHours()) + ':' + _p2(d.getMinutes()) + ':' + _p2(d.getSeconds()); }
+
+function calcularDashboardLocal(comunicaciones, tipos, hitos) {
+  const hoyStr = hoyISO();
+  const hace30 = _fhLocal(new Date(Date.now() - 30 * 86400000));
+  const lista = (tipos || []).map(function (t) { return { tipo: t.tipo, descripcion: t.descripcion }; });
+  const conocidos = {};
+  lista.forEach(function (t) { conocidos[t.tipo] = true; });
+  comunicaciones.forEach(function (c) {
+    const t = String(c.tipo || '').toUpperCase();
+    if (t && !conocidos[t]) { conocidos[t] = true; lista.push({ tipo: t, descripcion: t + ' (inactivo)' }); }
+  });
+  const cero = function () { const o = {}; lista.forEach(function (t) { o[t.tipo] = 0; }); return o; };
+  const totales = cero(), ultimos30 = cero();
+  const porMes = {}, porDia = {}, porEtiqueta = {}, porHashtag = {};
+  const avisos = [], todos = [];
+  let totalAviso = 0, totalActivos = 0;
+  comunicaciones.forEach(function (c) {
+    const tipo = String(c.tipo || '').toUpperCase();
+    const est = c.estado || 'Activo';
+    if (est === 'Anulado') return;
+    totalActivos++;
+    totales[tipo] = (totales[tipo] || 0) + 1;
+    if (c.fechaHoraCarga && c.fechaHoraCarga >= hace30) ultimos30[tipo] = (ultimos30[tipo] || 0) + 1;
+    const fila = { id: c.id, tipo: tipo, numero: c.numero, fecha: c.fecha, asunto: c.asunto, estado: est, fh: c.fechaHoraCarga || '' };
+    todos.push(fila);
+    if (est === 'Aviso') { totalAviso++; avisos.push(fila); }
+    if (c.fecha) {
+      const kM = c.fecha.slice(0, 7), kD = c.fecha;
+      if (!porMes[kM]) porMes[kM] = cero();
+      if (!porDia[kD]) { porDia[kD] = cero(); porDia[kD].total = 0; }
+      porMes[kM][tipo] = (porMes[kM][tipo] || 0) + 1;
+      porDia[kD][tipo] = (porDia[kD][tipo] || 0) + 1;
+      porDia[kD].total++;
+    }
+    String(c.etiquetas || '').split(',').map(function (e) { return e.trim(); }).filter(Boolean).forEach(function (e) {
+      if (!porEtiqueta[e]) { porEtiqueta[e] = cero(); porEtiqueta[e].total = 0; }
+      porEtiqueta[e][tipo] = (porEtiqueta[e][tipo] || 0) + 1;
+      porEtiqueta[e].total++;
+    });
+    String(c.hashtags || '').split(/\s+/).filter(Boolean).forEach(function (h) { porHashtag[h] = (porHashtag[h] || 0) + 1; });
+  });
+  const porFh = function (a, b) { return a.fh < b.fh ? 1 : a.fh > b.fh ? -1 : 0; };
+  todos.sort(porFh); avisos.sort(porFh);
+  const limpiar = function (r) { const o = Object.assign({}, r); delete o.fh; return o; };
+  const hashtags = Object.keys(porHashtag).map(function (h) { return { tag: h, n: porHashtag[h] }; })
+    .sort(function (a, b) { return b.n - a.n || a.tag.localeCompare(b.tag); }).slice(0, 30);
+  let pendientes = 0, vencidas = 0;
+  comunicaciones.forEach(function (c) {
+    if ((c.estado || 'Activo') === 'Anulado' || !c.requiereRespuesta || c.estadoRespuesta !== 'Pendiente') return;
+    pendientes++;
+    if (c.fechaVencimiento && c.fechaVencimiento < hoyStr) vencidas++;
+  });
+  let proximoHito = null;
+  (hitos || []).forEach(function (h) {
+    if (h.cumplido === 'SI' || !h.fechaPrevista || h.fechaPrevista < hoyStr) return;
+    if (!proximoHito || h.fechaPrevista < proximoHito.fechaPrevista) proximoHito = { nombre: h.nombre, fechaPrevista: h.fechaPrevista };
+  });
+  // Inconsistencias de numeración (= LO_calcularInconsistencias_)
+  const digitos = {};
+  (tipos || []).forEach(function (t) { digitos[t.tipo] = Number(t.digitos) || 4; });
+  const nums = {};
+  comunicaciones.forEach(function (c) {
+    const t = String(c.tipo || '').toUpperCase();
+    const n = String(c.numero === undefined ? '' : c.numero).trim();
+    if (!t || !/^\d+$/.test(n)) return;
+    const v = parseInt(n, 10);
+    if (!(v >= 1) || v > MAX_NUMERO_INCONSISTENCIAS) return;
+    (nums[t] = nums[t] || {})[v] = true;
+  });
+  const fmt = function (t, v) { return String(v).padStart(digitos[t] || 4, '0'); };
+  const porTipo = [];
+  let totalInc = 0;
+  lista.forEach(function (lt) {
+    const set = nums[lt.tipo];
+    if (!set) return;
+    const max = Object.keys(set).reduce(function (m, k) { return Math.max(m, Number(k)); }, 0);
+    const rangos = [];
+    let faltantes = 0, desde = null, recortado = false;
+    for (let v = 1; v <= max + 1; v++) {
+      const falta = v <= max && !set[v];
+      if (falta) { faltantes++; if (desde === null) desde = v; }
+      else if (desde !== null) {
+        if (rangos.length < 50) rangos.push({ desde: fmt(lt.tipo, desde), hasta: fmt(lt.tipo, v - 1) }); else recortado = true;
+        desde = null;
+      }
+    }
+    if (faltantes) { porTipo.push({ tipo: lt.tipo, faltantes: faltantes, rangos: rangos, recortado: recortado }); totalInc += faltantes; }
+  });
+  const txLista = comunicaciones
+    .filter(function (c) { return (c.estado || 'Activo') !== 'Anulado' && (c.estadoTexto === 'Pendiente' || c.estadoTexto === 'Error'); })
+    .map(function (c) { return { id: c.id, tipo: String(c.tipo || '').toUpperCase(), numero: c.numero, estadoTexto: c.estadoTexto, intentos: Number(c.intentosTexto) || 0 }; });
+  return {
+    version: APP_VERSION, tipos: lista, totalComunicaciones: totalActivos, totales: totales, ultimos30: ultimos30,
+    totalAviso: totalAviso, ultimos5: todos.slice(0, 5).map(limpiar), avisos: avisos.map(limpiar),
+    porMes: porMes, porDia: porDia, porEtiqueta: porEtiqueta, hashtags: hashtags, proximoHito: proximoHito,
+    pendientes: pendientes, vencidas: vencidas, inconsistencias: { total: totalInc, porTipo: porTipo },
+    textos: { pendientes: txLista.length, errores: txLista.filter(function (x) { return x.estadoTexto === 'Error'; }).length, lista: txLista.slice(0, TEXTOS_LISTA_MAX) },
+    calculadoEn: _fhLocal(new Date()), origen: 'navegador'
+  };
+}
+
+// ══════════════════════════════════════════════
+// v8.0.0 — BUSCAR (= LO_buscar_ del GAS 7.0.5): el texto de los PDF viene de
+// Supabase (lo_textos); Asunto/Resumen/Observación, de lo cargado en memoria.
+// ══════════════════════════════════════════════
+const SNIPPET_MARGEN = 60, BUSQ_MAX_FRAGMENTOS = 3, BUSQ_MAX_RESULTADOS = 200;
+function normBusq(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+function regexPalabra(terminoNorm) { return new RegExp('\\b' + terminoNorm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b'); }
+function fragmentoBusq(texto, pos, largo) {
+  const t = String(texto || '');
+  const ini = Math.max(0, pos - SNIPPET_MARGEN), fin = Math.min(t.length, pos + largo + SNIPPET_MARGEN);
+  return { antes: (ini > 0 ? '…' : '') + t.substring(ini, pos), match: t.substring(pos, pos + largo), despues: t.substring(pos + largo, fin) + (fin < t.length ? '…' : '') };
+}
+async function datosBuscar_(obraId, p) {
+  const t0 = Date.now();
+  const termino = String(p.termino || '').trim();
+  if (!termino) return { ok: false, error: 'Escribí algo para buscar.' };
+  if (termino.length > 200) return { ok: false, error: 'El texto a buscar es demasiado largo (máx. 200 caracteres).' };
+  const tipoF = String(p.tipo || '').trim().toUpperCase();
+  const filtroTipo = tipoF && tipoF !== 'TODOS' ? tipoF : '';
+  const sueltas = p.palabrasSueltas === true || p.palabrasSueltas === 'true';
+  const completa = p.palabraCompleta === true || p.palabraCompleta === 'true';
+  const termNorm = normBusq(termino);
+  const palabras = termNorm.split(/\s+/).filter(Boolean);
+  const multi = sueltas && palabras.length >= 2;
+  // A la base le alcanza con "contiene": el armado fino (palabra completa, frase) es el mismo de siempre, acá
+  const filas = await rpc_('buscar', 'lo_buscar_textos', { p_obra: obraId, p_palabras: multi ? palabras : [termNorm] });
+  if (filas && filas.ok === false) return filas;
+  const textos = {};
+  (filas || []).forEach(function (f) { (textos[f.id] = textos[f.id] || []).push({ pagina: f.pagina, texto: f.texto }); });
+  const reFrase = (!multi && (completa || sueltas)) ? regexPalabra(termNorm) : null;
+  const rePals = multi ? palabras.map(regexPalabra) : null;
+  const buscarFrase = function (norm) {
+    if (reFrase) { const m = reFrase.exec(norm); return m ? { pos: m.index, largo: termNorm.length } : null; }
+    const pos = norm.indexOf(termNorm);
+    return pos === -1 ? null : { pos: pos, largo: termNorm.length };
+  };
+  const primeraPalabra = function (norm) {
+    let mejor = null;
+    rePals.forEach(function (re, k) { const m = re.exec(norm); if (m && (!mejor || m.index < mejor.pos)) mejor = { pos: m.index, largo: palabras[k].length }; });
+    return mejor;
+  };
+  const resultados = [];
+  estado.comunicaciones.forEach(function (c) {
+    if (filtroTipo && String(c.tipo).toUpperCase() !== filtroTipo) return;
+    const campos = [{ origen: 'asunto', texto: c.asunto }, { origen: 'resumen', texto: c.resumen }, { origen: 'observacion', texto: c.observacion }]
+      .concat((textos[c.id] || []).map(function (t) { return { origen: 'pdf', pagina: t.pagina, texto: t.texto }; }));
+    const normas = campos.map(function (f) { return normBusq(f.texto); });
+    if (multi && !rePals.every(function (re) { return normas.some(function (n) { return re.test(n); }); })) return;
+    const frags = [];
+    let paginasPdf = 0;
+    campos.forEach(function (f, k) {
+      const m = multi ? primeraPalabra(normas[k]) : buscarFrase(normas[k]);
+      if (!m) return;
+      if (f.origen === 'pdf') paginasPdf++;
+      frags.push(Object.assign({ origen: f.origen, pagina: f.origen === 'pdf' ? f.pagina : '' }, fragmentoBusq(f.texto, m.pos, m.largo)));
+    });
+    if (!frags.length) return;
+    resultados.push({
+      id: c.id, tipo: c.tipo, numero: c.numero, fecha: c.fecha, asunto: c.asunto, estado: c.estado || 'Activo',
+      adjuntoUrl: c.adjuntoUrl, adjuntoNombre: c.adjuntoNombre, fragmentos: frags.slice(0, BUSQ_MAX_FRAGMENTOS),
+      coincidencias: { total: frags.length, paginasPdf: paginasPdf, pdfMostradas: frags.slice(0, BUSQ_MAX_FRAGMENTOS).filter(function (f) { return f.origen === 'pdf'; }).length }
+    });
+  });
+  resultados.sort(function (a, b) {
+    const an = a.estado === 'Anulado' ? 1 : 0, bn = b.estado === 'Anulado' ? 1 : 0;
+    if (an !== bn) return an - bn;
+    if (a.fecha !== b.fecha) return a.fecha < b.fecha ? 1 : -1;
+    return (a.tipo + a.numero) < (b.tipo + b.numero) ? 1 : -1;
+  });
+  registrarActividad('buscar', termino.slice(0, 200), { resultados: resultados.length });
+  return { ok: true, resultados: resultados.slice(0, BUSQ_MAX_RESULTADOS), total: resultados.length, recortado: resultados.length > BUSQ_MAX_RESULTADOS, ms: Date.now() - t0 };
 }
 
 // ══════════════════════════════════════════════
@@ -2551,6 +2815,11 @@ async function iniciarSesion(email) {
   if (!res.ok) {
     borrarSesion();
     mostrarPantalla('login-screen');
+    if (res.motivo === 'sin_sesion') {   // v8.0.0 — la sesión de Supabase no está o venció: pedir código de nuevo
+      document.getElementById('input-email').value = email || '';
+      mostrarPasoLogin('email');
+      return;
+    }
     mostrarTextoErrorAuth(res.motivo);
     mostrarPasoLogin('error-auth');
     return;
@@ -2561,6 +2830,7 @@ async function iniciarSesion(email) {
   estado.nombre = res.nombreApellido || email;
   estado.esAdmin = !!res.esAdmin;
   estado.obras = res.obras || [];
+  registrarActividad('ingreso');
   elegirObraInicial();
 }
 
@@ -2585,7 +2855,7 @@ function mostrarPasoLogin(paso) {
   });
 }
 const MOTIVOS_AUTH = {
-  no_encontrado: 'Ese email no está habilitado para LibroObra. Consultá con el administrador.',
+  no_encontrado: 'Ese email no está habilitado para LibroObra. Pedile al administrador que te habilite en GOE Admin.',
   inactivo: 'Tu usuario está inactivo. Consultá con el administrador.',
   bloqueado: 'Tu usuario quedó bloqueado por intentos fallidos. Consultá con el administrador.'
 };
@@ -2595,24 +2865,26 @@ function mostrarTextoErrorAuth(motivo) {
     (n ? ' Quedan ' + n + (n === 1 ? ' evento' : ' eventos') + ' del Parte de Contrato guardados en este dispositivo: se envían cuando vuelvas a ingresar.' : '');
 }
 
+// v8.0.0 — Login con Supabase Auth (código por mail), mismo flujo de pantallas que pwa_pin
 document.getElementById('btn-pedir-pin').addEventListener('click', async function () {
   const email = document.getElementById('input-email').value.trim().toLowerCase();
   const errBox = document.getElementById('login-error-email');
   errBox.classList.remove('visible');
   if (!email) return;
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { errBox.textContent = 'Ingresá un email válido.'; errBox.classList.add('visible'); return; }
   this.disabled = true;
   try {
-    const res = await llamarBackend('solicitarPIN', { email: email });
-    if (!res.ok) {
-      errBox.textContent = textoErrorSolicitarPin(res.motivo, res.restanteSegundos);
+    const { error } = await sb.auth.signInWithOtp({ email: email, options: { shouldCreateUser: true } });
+    if (error) {
+      console.error('[signInWithOtp]', error);
+      errBox.textContent = traducirErrorAuth(error);
       errBox.classList.add('visible');
       this.disabled = false;
       return;
     }
     irAPasoCodigo(email, '');
   } catch (err) {
-    // v6.0.1 — falla de transporte: el backend pudo haber mandado el mail igual
-    irAPasoCodigo(email, 'No pudimos confirmar el envío. Si te llegó el mail, ingresá el código; si no, pedí otro en 2 minutos.');
+    irAPasoCodigo(email, 'No pudimos confirmar el envío. Si te llegó el mail, ingresá el código; si no, pedí otro en un minuto.');
   }
   this.disabled = false;
 });
@@ -2629,12 +2901,12 @@ function irAPasoCodigo(email, aviso) {
   mostrarPasoLogin('codigo');
   setTimeout(function () { document.getElementById('input-pin').focus(); }, 50);
 }
-function textoErrorSolicitarPin(motivo, restanteSegundos) {
-  if (motivo === 'cooldown') return 'Esperá ' + restanteSegundos + ' segundos antes de pedir otro código.';
-  if (motivo === 'no_encontrado') return 'Ese email no está habilitado para LibroObra.';
-  if (motivo === 'inactivo') return 'Tu usuario está inactivo.';
-  if (motivo === 'bloqueado') return 'Tu usuario está bloqueado por intentos fallidos.';
-  return 'No se pudo enviar el código. Probá de nuevo.';
+function traducirErrorAuth(err) {
+  const m = (err && (err.message || err.msg)) || String(err);
+  if (/rate limit|too many|security purposes/i.test(m)) return 'Demasiados pedidos de código seguidos. Esperá un minuto y probá de nuevo.';
+  if (/expired|invalid/i.test(m)) return 'Código incorrecto o vencido.';
+  if (/fetch|network/i.test(m)) return 'No se pudo conectar. Revisá tu conexión y volvé a intentar.';
+  return m;
 }
 document.getElementById('btn-reenviar-pin').addEventListener('click', function () {
   document.getElementById('input-email').value = document.getElementById('input-email').dataset.pendiente || '';
@@ -2642,42 +2914,31 @@ document.getElementById('btn-reenviar-pin').addEventListener('click', function (
 });
 document.getElementById('btn-validar-pin').addEventListener('click', async function () {
   const email = document.getElementById('input-email').dataset.pendiente;
-  const pin = document.getElementById('input-pin').value.trim();
+  const pin = document.getElementById('input-pin').value.replace(/\D/g, '');
   const errBox = document.getElementById('login-error-pin');
   errBox.classList.remove('visible');
-  if (!pin) return;
+  if (pin.length < 6) { errBox.textContent = 'El código tiene al menos 6 dígitos.'; errBox.classList.add('visible'); return; }
   this.disabled = true;
   try {
-    const res = await llamarBackend('validarPIN', { email: email, pin: pin });
-    if (!res.ok) {
-      errBox.textContent = textoErrorValidarPin(res.motivo, res.restantes);
+    const { error } = await sb.auth.verifyOtp({ email: email, token: pin, type: 'email' });
+    if (error) {
+      console.error('[verifyOtp]', error);
+      errBox.textContent = traducirErrorAuth(error);
       errBox.classList.add('visible');
       this.disabled = false;
       return;
     }
-    guardarSesion(email, res.nombreApellido, res.noExpira);
+    guardarSesion(email, '', true);
     mostrarPasoLogin('validando');
   } catch (err) {
-    // v6.0.1 — opción A: el PIN es de un solo uso y el backend pudo haberlo
-    // consumido aunque la respuesta se haya perdido → no reintentar, pedir otro.
     this.disabled = false;
-    const errEmail = document.getElementById('login-error-email');
-    document.getElementById('input-email').value = email || '';
-    errEmail.textContent = 'No pudimos confirmar el ingreso (falla de comunicación con el servidor). Pedí un código nuevo.';
-    errEmail.classList.add('visible');
-    mostrarPasoLogin('email');
+    errBox.textContent = 'No pudimos confirmar el ingreso (falla de comunicación). Probá de nuevo o pedí un código nuevo.';
+    errBox.classList.add('visible');
     return;
   }
   await iniciarSesion(email);
   this.disabled = false;
 });
-function textoErrorValidarPin(motivo, restantes) {
-  if (motivo === 'pin_incorrecto') return 'Código incorrecto. Te quedan ' + restantes + ' intentos.';
-  if (motivo === 'bloqueado_ahora') return 'Demasiados intentos fallidos — tu usuario quedó bloqueado.';
-  if (motivo === 'pin_vencido') return 'El código venció. Pedí uno nuevo.';
-  if (motivo === 'sin_pin_generado') return 'Todavía no pediste un código para este email.';
-  return 'No se pudo validar el código.';
-}
 document.getElementById('btn-reintentar-conexion').addEventListener('click', boot);
 document.getElementById('btn-volver-email').addEventListener('click', function () { mostrarPasoLogin('email'); });
 
@@ -2708,7 +2969,10 @@ async function confirmarCerrarSesion() {
   const ok = await mostrarConfirm('Cerrar sesión', '¿Querés cerrar la sesión en este dispositivo? Vas a tener que pedir un código nuevo para volver a entrar.', { textoAceptar: 'Cerrar sesión', danger: true });
   if (ok) cerrarSesion();
 }
-function cerrarSesion() { borrarSesion(); cerrarSessionDialog(); location.reload(); }
+async function cerrarSesion() {
+  try { if (sb) await sb.auth.signOut({ scope: 'local' }); } catch (e) { console.warn('[signOut]', e); }   // v8.0.0 — solo este dispositivo
+  borrarSesion(); cerrarSessionDialog(); location.reload();
+}
 
 // ── Botón Instalar (patrón estándar del stack: solo con beforeinstallprompt) ──
 let _eventoInstalar = null;
@@ -2733,7 +2997,7 @@ function renderObras() {
   mostrarPantalla('obras-screen');
   const cont = document.getElementById('lista-obras');
   if (!estado.obras.length) {
-    cont.innerHTML = '<div class="obras-vacio">Todavía no tenés ninguna obra asignada.<br>Pedile al administrador que te agregue en "usuarios_obras".</div>';
+    cont.innerHTML = '<div class="obras-vacio">Todavía no tenés ninguna obra asignada.<br>Pedile al administrador que te agregue en GOE Admin.</div>';
     return;
   }
   cont.innerHTML = '';
@@ -2915,6 +3179,7 @@ async function cargarDatosObra(recarga) {
       guardarDashLocal(obraId, pes.dashboard);
     }
     estado.datosListos = true;
+    registrarActividad('abrir_obra', estado.obra.codigoObra);
 
     document.getElementById('btn-nueva-com').classList.toggle('hidden', !estado.puedeEditar);
     document.getElementById('btn-nuevo-hito').classList.toggle('hidden', !estado.puedeEditar);
@@ -2931,7 +3196,7 @@ async function cargarDatosObra(recarga) {
   } catch (err) {
     if (seq !== estado.cargaSeq) return;
     console.error('[cargarDatosObra]', err);
-    const msg = err.message || 'No se pudo conectar con el backend.';
+    const msg = err.message || 'No se pudo conectar con el servidor.';
     const reintentar = function () { cargarDatosObra(recarga); };
     // err.respuesta = el backend respondió {ok:false} (sin permiso, usuario inactivo, obra inexistente…).
     // Sin respuesta = falla de transporte (red, 404, respuesta no JSON).
@@ -3009,7 +3274,7 @@ function showSection(id, forzar) {
 // ══════════════════════════════════════════════
 // INICIO — DASHBOARD PRECALCULADO
 // ══════════════════════════════════════════════
-const ORIGEN_TXT = { automatico: 'automático (23 hs)', accion: 'tras un guardado', manual: 'manual' };
+const ORIGEN_TXT = { automatico: 'automático (23 hs)', accion: 'tras un guardado', manual: 'manual', navegador: 'al día' };
 
 function renderDashboard() {
   const d = estado.dashboard;
@@ -3681,7 +3946,7 @@ function renderChipsEtiquetas(contId, seleccionadas, deshabilitado) {
   (seleccionadas || []).forEach(function (e) { if (catalogo.indexOf(e) === -1) catalogo.push(e); }); // etiquetas viejas fuera del catálogo
   const cont = document.getElementById(contId);
   if (!catalogo.length) {
-    cont.innerHTML = '<span class="form-hint">La obra no tiene etiquetas cargadas (hoja Etiquetas del Sheet de la obra).</span>';
+    cont.innerHTML = '<span class="form-hint">La obra no tiene etiquetas cargadas (catálogo de la obra en Supabase, tabla lo_etiquetas).</span>';
     return;
   }
   cont.innerHTML = catalogo.map(function (e) {
@@ -3841,7 +4106,7 @@ function picker(nombre, contId, modo, onChange) {
 // ══════════════════════════════════════════════
 function abrirModalCarga() {
   if (!estado.puedeEditar) return;
-  if (!estado.tipos.length) { mostrarAviso('La obra no tiene tipos de documento activos (hoja Tipos del Sheet de la obra).'); return; }
+  if (!estado.tipos.length) { mostrarAviso('La obra no tiene tipos de documento activos (catálogo de la obra en Supabase, tabla lo_tipos).'); return; }
   document.getElementById('carga-tipo').innerHTML = estado.tipos.map(function (t) {
     return '<option value="' + escaparHtml(t.tipo) + '">' + escaparHtml(t.tipo) + (t.descripcion ? ' — ' + escaparHtml(t.descripcion) : '') + '</option>';
   }).join('');
@@ -3981,6 +4246,7 @@ async function guardarCarga() {
     estado.altaId = null;
     limpiarArchivo();
     const nResp = (r.actualizadas || []).length;
+    registrarActividad('alta', r.comunicacion.tipo + ' ' + r.comunicacion.numero);
     mostrarToast('✓ ' + r.comunicacion.tipo + ' ' + r.comunicacion.numero + ' registrada' +
       (nResp ? ' · ' + nResp + (nResp === 1 ? ' respondida' : ' respondidas') : ''));
     recalcularDashboardFondo('accion');
@@ -5448,7 +5714,7 @@ function pdcPintarSync() {
   else { txt = '—'; cls = ''; }
   p.textContent = txt;
   p.className = 'pdc-pill ' + cls;
-  p.title = n ? n + ' evento(s) guardados en el dispositivo, sin enviar todavía' : 'Sincronizado con el Sheet de la obra';
+  p.title = n ? n + ' evento(s) guardados en el dispositivo, sin enviar todavía' : 'Sincronizado con la base';
 }
 
 // ── Pantalla "Hoy" ──
@@ -5679,7 +5945,7 @@ async function pdcBorrarEvento(id) {
   if (!e) return;
   const t = pdcTipo(e.tipoId);
   const ok = await mostrarConfirm('Borrar evento', '¿Borrar "' + pdcNombreValor(e) + '" de las ' + pdcHora(e.fechaHora) +
-    (t ? ' (' + t.tipo + ')' : '') + '?\n\nEn el Sheet queda marcado como borrado.', { textoAceptar: 'Borrar', danger: true });
+    (t ? ' (' + t.tipo + ')' : '') + '?\n\nEn la base queda marcado como borrado.', { textoAceptar: 'Borrar', danger: true });
   if (ok) pdcDeshacer([id]);
 }
 
@@ -6355,7 +6621,7 @@ async function pdcCalSincronizar() {
     if (pdc.queue.length) await pdcEnviar();
     const r = await api('pdcCalSync', {});
     tareaOk('cal', 'Calendario al día: ' + r.creados + (r.creados === 1 ? ' nuevo, ' : ' nuevos, ') + r.actualizados + ' actualizados, ' + r.borrados + ' borrados' +
-      (r.errores ? ' · ' + r.errores + ' con error (ver Log_GAS)' : '') + (r.cortado ? ' · sigue a las 23 hs' : ''));
+      (r.errores ? ' · ' + r.errores + ' con error (ver Log_GAS de LO Sync)' : '') + (r.cortado ? ' · sigue a las 23 hs' : ''));
   } catch (err) {
     tareaError('cal', 'No se pudo sincronizar el calendario: ' + err.message, [{ texto: 'Reintentar', fn: pdcCalSincronizar, primario: true }]);
   } finally {
@@ -6397,7 +6663,7 @@ async function pdcInformeSemanal() {
     (faltan ? '<b style="color:#b91c1c">Celdas sin cargar: ' + faltan + '</b> — ' + escaparHtml(Object.keys(S.faltanDia).sort().map(function (d) { return pdcDiaCorto(d) + ' (' + S.faltanDia[d] + ')'; }).join(', ')) + '<br>' : 'Parte completo: todas las celdas exigibles tienen al menos un evento.<br>') +
     'Eventos con ajuste: <b>' + S.eventos.filter(pdcAjustado).length + '</b>' +
     (S.ini ? ' · Parte exigible desde ' + escaparHtml(pdcDiaCorto(S.ini)) + '/' + S.ini.slice(0, 4) : ' · La obra no tiene PDC_FECHA_INICIO') +
-    (pdc.queue.length ? '<br><b style="color:#b45309">Atención:</b> hay ' + pdc.queue.length + ' eventos en este dispositivo todavía sin enviar al Sheet (incluidos en el informe).' : '') +
+    (pdc.queue.length ? '<br><b style="color:#b45309">Atención:</b> hay ' + pdc.queue.length + ' eventos en este dispositivo todavía sin enviar a la base (incluidos en el informe).' : '') +
     '</div><div style="margin-top:14px;font-size:11px;color:#64748b">Impacto: 0 sin impacto · 1 leve · 2 parcial (≈ media jornada o un frente) · 3 día caído. Se usa el impacto y el responsable <b>efectivos</b> (el ajustado si existe; si no, el propuesto). Un día cuenta para un responsable si tiene al menos un evento suyo con ese impacto.</div>';
   // 2) Grilla
   let grilla = cab('2 · Grilla de la semana') + '<table style="width:100%;border-collapse:separate;border-spacing:3px;table-layout:fixed"><thead><tr><th style="' + th + ';width:210px;border:none"></th>' +

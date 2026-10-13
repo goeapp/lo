@@ -1,5 +1,6 @@
-// sw.js — LibroObra PWA · v7.0.5 (08-oct-2026) — solo cambia CACHE_NAME (index v7.0.5)
-// Se entrega como sw_libroobra_v7_0_4.js y se sube al repo "lo" RENOMBRADO
+// sw.js — LibroObra PWA · v8.0.0 (13-oct-2026) — index v8.0.0 (Supabase): CACHE_NAME nuevo,
+//   precarga supabase-js y NUNCA guarda en caché los datos de Supabase.
+// Se entrega como sw_libroobra_v8_0_0.js y se sube al repo "lo" RENOMBRADO
 // a sw.js (al lado de index.html). Base: sw de BUP v1.1.0 (patrón MdT).
 //
 // Para qué: que la app ABRA SIN SEÑAL (Parte de Contrato, D20).
@@ -14,7 +15,7 @@
 //    sin señal se ve con la letra del sistema.
 // Cambiar CACHE_NAME en cada versión nueva del index.
 
-const CACHE_NAME = 'lo-v7.0.5';
+const CACHE_NAME = 'lo-v8.0.0';
 
 const PROPIOS = [
   './',
@@ -33,7 +34,8 @@ const CDN = [
   'https://cdn.datatables.net/1.13.11/css/jquery.dataTables.min.css',
   'https://code.jquery.com/jquery-3.7.1.min.js',
   'https://cdn.datatables.net/1.13.11/js/jquery.dataTables.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js'
+  'https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js'   // v8.0.0
 ];
 const CDN_HOSTS = ['code.jquery.com', 'cdn.datatables.net', 'cdnjs.cloudflare.com', 'cdn.jsdelivr.net'];
 
@@ -65,7 +67,8 @@ self.addEventListener('fetch', function (e) {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  // Datos siempre en vivo: backend y Google
+  // Datos siempre en vivo: Supabase (v8.0.0), LO Sync y Google
+  if (url.hostname.indexOf('supabase.co') !== -1) return;
   if (url.hostname.indexOf('script.google') !== -1 || url.hostname.indexOf('googleusercontent.com') !== -1) return;
   if (url.hostname.indexOf('googleapis.com') !== -1 || url.hostname.indexOf('gstatic.com') !== -1) return;
   if (url.hostname.indexOf('accounts.google.com') !== -1) return;
